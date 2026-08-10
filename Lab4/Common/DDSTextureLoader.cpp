@@ -1,22 +1,3 @@
-//--------------------------------------------------------------------------------------
-// File: DDSTextureLoader.cpp
-//
-// Functions for loading a DDS texture and creating a Direct3D 11 runtime resource for it
-//
-// Note these functions are useful as a light-weight runtime loader for DDS files. For
-// a full-featured DDS file reader, writer, and texture processing pipeline see
-// the 'Texconv' sample and the 'DirectXTex' library.
-//
-// THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
-// ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO
-// THE IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A
-// PARTICULAR PURPOSE.
-//
-// Copyright (c) Microsoft Corporation. All rights reserved.
-//
-// http://go.microsoft.com/fwlink/?LinkId=248926
-// http://go.microsoft.com/fwlink/?LinkId=248929
-//--------------------------------------------------------------------------------------
 
 #include <assert.h>
 #include <algorithm>
@@ -33,20 +14,12 @@ using namespace Microsoft::WRL;
 
 using namespace DirectX;
 
-//--------------------------------------------------------------------------------------
-// Macros
-//--------------------------------------------------------------------------------------
 #ifndef MAKEFOURCC
     #define MAKEFOURCC(ch0, ch1, ch2, ch3)                              \
                 ((uint32_t)(uint8_t)(ch0) | ((uint32_t)(uint8_t)(ch1) << 8) |       \
                 ((uint32_t)(uint8_t)(ch2) << 16) | ((uint32_t)(uint8_t)(ch3) << 24 ))
 #endif /* defined(MAKEFOURCC) */
 
-//--------------------------------------------------------------------------------------
-// DDS file structure definitions
-//
-// See DDS.h in the 'Texconv' sample and the 'DirectXTex' library
-//--------------------------------------------------------------------------------------
 #pragma pack(push,1)
 
 const uint32_t DDS_MAGIC = 0x20534444; // "DDS "
@@ -1269,14 +1242,16 @@ static HRESULT CreateD3DResources12(
 		texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 		texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-		hr = device->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-			D3D12_HEAP_FLAG_NONE,
-			&texDesc,
-			D3D12_RESOURCE_STATE_COMMON,
-			nullptr,
-			IID_PPV_ARGS(&texture)
-			);
+        CD3DX12_HEAP_PROPERTIES defaultHeapProps(D3D12_HEAP_TYPE_DEFAULT);
+
+        hr = device->CreateCommittedResource(
+            &defaultHeapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &texDesc,
+            D3D12_RESOURCE_STATE_COMMON,
+            nullptr,
+            IID_PPV_ARGS(&texture)
+        );
 
 		if (FAILED(hr))
 		{
@@ -1288,13 +1263,19 @@ static HRESULT CreateD3DResources12(
 			const UINT num2DSubresources = texDesc.DepthOrArraySize * texDesc.MipLevels;
 			const UINT64 uploadBufferSize = GetRequiredIntermediateSize(texture.Get(), 0, num2DSubresources);
 
-			hr = device->CreateCommittedResource(
-				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-				D3D12_HEAP_FLAG_NONE,
-				&CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize),
-				D3D12_RESOURCE_STATE_GENERIC_READ,
-				nullptr,
-				IID_PPV_ARGS(&textureUploadHeap));
+            CD3DX12_HEAP_PROPERTIES uploadHeapProps(D3D12_HEAP_TYPE_UPLOAD);
+            CD3DX12_RESOURCE_DESC uploadBufferDesc =
+                CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize);
+
+            hr = device->CreateCommittedResource(
+                &uploadHeapProps,
+                D3D12_HEAP_FLAG_NONE,
+                &uploadBufferDesc,
+                D3D12_RESOURCE_STATE_GENERIC_READ,
+                nullptr,
+                IID_PPV_ARGS(&textureUploadHeap)
+            );
+
 			if (FAILED(hr))
 			{
 				texture = nullptr;
@@ -1302,14 +1283,24 @@ static HRESULT CreateD3DResources12(
 			}
 			else
 			{
-				cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texture.Get(),
-					D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
+                auto barrierToCopyDest =
+                    CD3DX12_RESOURCE_BARRIER::Transition(
+                        texture.Get(),
+                        D3D12_RESOURCE_STATE_COMMON,
+                        D3D12_RESOURCE_STATE_COPY_DEST);
+
+                cmdList->ResourceBarrier(1, &barrierToCopyDest);
 
 				// Use Heap-allocating UpdateSubresources implementation for variable number of subresources (which is the case for textures).
 				UpdateSubresources(cmdList, texture.Get(), textureUploadHeap.Get(), 0, 0, num2DSubresources, initData);
 
-				cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texture.Get(),
-					D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+                auto barrierToPixelShader =
+                    CD3DX12_RESOURCE_BARRIER::Transition(
+                        texture.Get(),
+                        D3D12_RESOURCE_STATE_COPY_DEST,
+                        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+                cmdList->ResourceBarrier(1, &barrierToPixelShader);
 			}
 		}
 	} break;

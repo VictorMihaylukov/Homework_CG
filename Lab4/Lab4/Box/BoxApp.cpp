@@ -1,6 +1,7 @@
 #include "../../Common/d3dApp.h"
 #include "../../Common/MathHelper.h"
 #include "../../Common/UploadBuffer.h"
+#include "../../Common/DDSTextureLoader.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
@@ -16,7 +17,8 @@ using namespace DirectX::PackedVector;
 struct Vertex
 {
     XMFLOAT3 Pos;
-    XMFLOAT4 Color;
+    //текстурная координа вместо цвета
+    XMFLOAT2 TexC;
 };
 
 struct ObjectConstants
@@ -49,11 +51,17 @@ private:
     void BuildShadersAndInputLayout();
     void BuildBoxGeometry();
     void BuildPSO();
+    void LoadTexture();
+    void BuildTextureSRV();
 
 private:
     
     ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
     ComPtr<ID3D12DescriptorHeap> mCbvHeap = nullptr;
+
+    //добавляем текстуру в класс
+    ComPtr<ID3D12Resource> mTexture = nullptr;
+    ComPtr<ID3D12Resource> mTextureUploadHeap = nullptr;
 
     std::unique_ptr<UploadBuffer<ObjectConstants>> mObjectCB = nullptr;
 
@@ -118,7 +126,9 @@ bool BoxApp::Initialize()
     ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
  
     BuildDescriptorHeaps();
-	BuildConstantBuffers();
+    BuildConstantBuffers();
+    LoadTexture();
+    BuildTextureSRV();
     BuildRootSignature();
     BuildShadersAndInputLayout();
     BuildBoxGeometry();
@@ -214,6 +224,21 @@ void BoxApp::Draw(const GameTimer& gt)
     
     mCommandList->SetGraphicsRootDescriptorTable(0, mCbvHeap->GetGPUDescriptorHandleForHeapStart());
 
+    //srv
+    mCommandList->SetGraphicsRootDescriptorTable(
+        0,
+        mCbvHeap->GetGPUDescriptorHandleForHeapStart());
+
+    CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(
+        mCbvHeap->GetGPUDescriptorHandleForHeapStart(),
+        1,
+        md3dDevice->GetDescriptorHandleIncrementSize(
+            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+
+    mCommandList->SetGraphicsRootDescriptorTable(
+        1,
+        srvHandle);
+
     mCommandList->DrawIndexedInstanced(
 		mBoxGeo->DrawArgs["box"].IndexCount, 
 		1, 0, 0, 0);
@@ -288,10 +313,25 @@ void BoxApp::OnMouseMove(WPARAM btnState, int x, int y)
     mLastMousePos.y = y;
 }
 
+void BoxApp::LoadTexture()
+{
+    std::wstring filename =
+        L"../../assets/textures_dds/sponza_arch_diff.dds";
+
+    ThrowIfFailed(
+        DirectX::CreateDDSTextureFromFile12(
+            md3dDevice.Get(),
+            mCommandList.Get(),
+            filename.c_str(),
+            mTexture,
+            mTextureUploadHeap));
+}
+
 void BoxApp::BuildDescriptorHeaps()
 {
     D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
-    cbvHeapDesc.NumDescriptors = 1;
+    //увеличиваем кол-во дескрипторов
+    cbvHeapDesc.NumDescriptors = 2;
     cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	cbvHeapDesc.NodeMask = 0;
@@ -321,23 +361,41 @@ void BoxApp::BuildConstantBuffers()
 
 void BoxApp::BuildRootSignature()
 {
-	// Shader programs typically require resources as input (constant buffers,
-	// textures, samplers).  The root signature defines the resources the shader
-	// programs expect.  If we think of the shader programs as a function, and
-	// the input resources as function parameters, then the root signature can be
-	// thought of as defining the function signature.  
+    CD3DX12_ROOT_PARAMETER slotRootParameter[2];
 
-	// Root parameter can be a table, root descriptor or root constants.
-	CD3DX12_ROOT_PARAMETER slotRootParameter[1];
+    CD3DX12_DESCRIPTOR_RANGE cbvTable;
+    cbvTable.Init(
+        D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+        1,
+        0);
 
-	// Create a single descriptor table of CBVs.
-	CD3DX12_DESCRIPTOR_RANGE cbvTable;
-	cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
-	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable);
+    slotRootParameter[0].InitAsDescriptorTable(
+        1,
+        &cbvTable);
 
-	// A root signature is an array of root parameters.
-	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(1, slotRootParameter, 0, nullptr, 
-		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+    CD3DX12_DESCRIPTOR_RANGE srvTable;
+    srvTable.Init(
+        D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+        1,
+        0);
+
+    slotRootParameter[1].InitAsDescriptorTable(
+        1,
+        &srvTable);
+
+    CD3DX12_STATIC_SAMPLER_DESC samplerDesc(
+        0,
+        D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP);
+
+    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(
+        2,
+        slotRootParameter,
+        1,
+        &samplerDesc,
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	// create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
 	ComPtr<ID3DBlob> serializedRootSig = nullptr;
@@ -367,15 +425,30 @@ void BoxApp::BuildShadersAndInputLayout()
 
     mInputLayout =
     {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+        {
+            "POSITION",
+            0,
+            DXGI_FORMAT_R32G32B32_FLOAT,
+            0,
+            0,
+            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            0
+        },
+
+        {
+            "TEXCOORD",
+            0,
+            DXGI_FORMAT_R32G32_FLOAT,
+            0,
+            12,
+            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            0
+        }
     };
 }
 
 void BoxApp::BuildBoxGeometry()
 {
-    // Путь: либо "sponza.obj" рядом с .exe (working dir),
-    // либо укажи относительный путь типа "Assets\\sponza.obj".
     std::string inputfile = "../../Assets/sponza.obj";
 
     tinyobj::ObjReaderConfig reader_config;
@@ -411,25 +484,20 @@ void BoxApp::BuildBoxGeometry()
             v.Pos.y = attrib.vertices[3 * idx.vertex_index + 1];
             v.Pos.z = attrib.vertices[3 * idx.vertex_index + 2];
 
-            // Масштаб как в kg_lab4.cpp (иначе она огромная)
+            // Масштаб как раньше
             v.Pos.x *= 0.01f;
             v.Pos.y *= 0.01f;
             v.Pos.z *= 0.01f;
 
-            // COLOR: чтобы не менять шейдер, просто задаём цвет.
-            // Если в obj есть нормали — окрасим по нормали (будет красиво).
-            if (idx.normal_index >= 0 && !attrib.normals.empty())
+            // TEXCOORD
+            if (idx.texcoord_index >= 0 && !attrib.texcoords.empty())
             {
-                float nx = attrib.normals[3 * idx.normal_index + 0];
-                float ny = attrib.normals[3 * idx.normal_index + 1];
-                float nz = attrib.normals[3 * idx.normal_index + 2];
-
-                // [-1..1] -> [0..1]
-                v.Color = XMFLOAT4(0.5f * nx + 0.5f, 0.5f * ny + 0.5f, 0.5f * nz + 0.5f, 1.0f);
+                v.TexC.x = attrib.texcoords[2 * idx.texcoord_index + 0];
+                v.TexC.y = 1.0f - attrib.texcoords[2 * idx.texcoord_index + 1];
             }
             else
             {
-                v.Color = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
+                v.TexC = XMFLOAT2(0.0f, 0.0f);
             }
 
             vertices.push_back(v);
@@ -475,7 +543,6 @@ void BoxApp::BuildBoxGeometry()
     mBoxGeo->DrawArgs["box"] = submesh;
 }
 
-
 void BoxApp::BuildPSO()
 {
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
@@ -503,4 +570,28 @@ void BoxApp::BuildPSO()
     psoDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
     psoDesc.DSVFormat = mDepthStencilFormat;
     ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&mPSO)));
+}
+
+void BoxApp::BuildTextureSRV()
+{
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    srvDesc.Shader4ComponentMapping =
+        D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+    srvDesc.Format = mTexture->GetDesc().Format;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MostDetailedMip = 0;
+    srvDesc.Texture2D.MipLevels = mTexture->GetDesc().MipLevels;
+    srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+
+    CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(
+        mCbvHeap->GetCPUDescriptorHandleForHeapStart(),
+        1,
+        md3dDevice->GetDescriptorHandleIncrementSize(
+            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+
+    md3dDevice->CreateShaderResourceView(
+        mTexture.Get(),
+        &srvDesc,
+        hDescriptor);
 }

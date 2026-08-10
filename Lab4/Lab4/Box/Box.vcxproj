@@ -146,6 +146,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\Common\d3dApp.cpp" />
     <ClCompile Include="..\..\Common\d3dUtil.cpp" />
+    <ClCompile Include="..\..\Common\DDSTextureLoader.cpp" />
     <ClCompile Include="..\..\Common\GameTimer.cpp" />
     <ClCompile Include="..\..\Common\MathHelper.cpp" />
     <ClCompile Include="BoxApp.cpp" />
@@ -153,9 +154,15 @@
   <ItemGroup>
     <ClInclude Include="..\..\Common\d3dApp.h" />
     <ClInclude Include="..\..\Common\d3dUtil.h" />
+    <ClInclude Include="..\..\Common\DDSTextureLoader.h" />
     <ClInclude Include="..\..\Common\GameTimer.h" />
     <ClInclude Include="..\..\Common\MathHelper.h" />
     <ClInclude Include="..\..\Common\UploadBuffer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\color.hlsl">
+      <FileType>Document</FileType>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
