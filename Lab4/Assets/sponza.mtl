@@ -9,9 +9,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/lion.tga
-map_Disp textures/lion_ddn.tga
-map_Ka textures/lion.tga
+map_Kd textures/lion.dds
+map_Disp textures/lion_ddn.dds
+map_Ka textures/lion.dds
 
 newmtl Material__298
 Ns 7.843137
@@ -21,9 +21,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/background.tga
-map_Disp textures/background_ddn.tga
-map_Ka textures/background.tga
+map_Kd textures/background.dds
+map_Disp textures/background_ddn.dds
+map_Ka textures/background.dds
 
 newmtl Material__47
 Ns 7.843137
@@ -43,9 +43,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Kd textures/vase_plant.tga
-map_d textures/vase_plant_mask.tga
-map_Ka textures/vase_plant.tga
+map_Kd textures/vase_plant.dds
+map_d textures/vase_plant_mask.dds
+map_Ka textures/vase_plant.dds
 
 newmtl arch
 Ns 7.843137
@@ -55,9 +55,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/sponza_arch_diff.tga
-map_Ka textures/sponza_arch_diff.tga
-map_Disp textures/sponza_arch_ddn.tga
+map_Kd textures/sponza_arch_diff.dds
+map_Ka textures/sponza_arch_diff.dds
+map_Disp textures/sponza_arch_ddn.dds
 
 newmtl bricks
 Ns 7.843137
@@ -67,9 +67,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/spnza_bricks_a_diff.tga
-map_Disp textures/spnza_bricks_a_ddn.tga
-map_Ka textures/spnza_bricks_a_diff.tga
+map_Kd textures/spnza_bricks_a_diff.dds
+map_Disp textures/spnza_bricks_a_ddn.dds
+map_Ka textures/spnza_bricks_a_diff.dds
 
 newmtl ceiling
 Ns 7.843137
@@ -79,9 +79,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/sponza_ceiling_a_diff.tga
-map_Ka textures/sponza_ceiling_a_diff.tga
-map_Disp textures/sponza_ceiling_a_ddn.tga
+map_Kd textures/sponza_ceiling_a_diff.dds
+map_Ka textures/sponza_ceiling_a_diff.dds
+map_Disp textures/sponza_ceiling_a_ddn.dds
 
 newmtl chain
 Ns 7.843137
@@ -91,10 +91,10 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Kd textures/chain_texture.tga
-map_d textures/chain_texture_mask.tga
-map_Disp textures/chain_texture_ddn.tga
-map_Ka textures/chain_texture.tga
+map_Kd textures/chain_texture.dds
+map_d textures/chain_texture_mask.dds
+map_Disp textures/chain_texture_ddn.dds
+map_Ka textures/chain_texture.dds
 
 newmtl column_a
 Ns 7.843137
@@ -104,9 +104,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/sponza_column_a_diff.tga
-map_Disp textures/sponza_column_a_ddn.tga
-map_Ka textures/sponza_column_a_diff.tga
+map_Kd textures/sponza_column_a_diff.dds
+map_Disp textures/sponza_column_a_ddn.dds
+map_Ka textures/sponza_column_a_diff.dds
 
 newmtl column_b
 Ns 7.843137
@@ -116,9 +116,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/sponza_column_b_diff.tga
-map_Disp textures/sponza_column_b_ddn.tga
-map_Ka textures/sponza_column_b_diff.tga
+map_Kd textures/sponza_column_b_diff.dds
+map_Disp textures/sponza_column_b_ddn.dds
+map_Ka textures/sponza_column_b_diff.dds
 
 newmtl column_c
 Ns 7.843137
@@ -128,9 +128,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/sponza_column_c_diff.tga
-map_Disp textures/sponza_column_c_ddn.tga
-map_Ka textures/sponza_column_c_diff.tga
+map_Kd textures/sponza_column_c_diff.dds
+map_Disp textures/sponza_column_c_ddn.dds
+map_Ka textures/sponza_column_c_diff.dds
 
 newmtl details
 Ns 7.843137
@@ -140,9 +140,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/sponza_details_diff.tga
-map_Ka textures/sponza_details_diff.tga
-map_Disp textures/sponza_details_ddn.tga
+map_Kd textures/sponza_details_diff.dds
+map_Ka textures/sponza_details_diff.dds
+map_Disp textures/sponza_details_ddn.dds
 
 newmtl fabric_a
 Ns 7.843137
@@ -152,9 +152,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/sponza_fabric_diff.tga
-map_Ka textures/sponza_fabric_diff.tga
-map_Disp textures/sponza_fabric_ddn.tga
+map_Kd textures/sponza_fabric_diff.dds
+map_Ka textures/sponza_fabric_diff.dds
+map_Disp textures/sponza_fabric_ddn.dds
 
 newmtl fabric_c
 Ns 7.843137
@@ -164,9 +164,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/sponza_curtain_diff.tga
-map_Ka textures/sponza_curtain_diff.tga
-map_Disp textures/sponza_curtain_ddn.tga
+map_Kd textures/sponza_curtain_diff.dds
+map_Ka textures/sponza_curtain_diff.dds
+map_Disp textures/sponza_curtain_ddn.dds
 
 
 newmtl fabric_d
@@ -177,9 +177,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/sponza_fabric_blue_diff.tga
-map_Ka textures/sponza_fabric_blue_diff.tga
-map_Disp textures/sponza_fabric_ddn.tga
+map_Kd textures/sponza_fabric_blue_diff.dds
+map_Ka textures/sponza_fabric_blue_diff.dds
+map_Disp textures/sponza_fabric_ddn.dds
 
 
 newmtl fabric_e
@@ -190,9 +190,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/sponza_fabric_green_diff.tga
-map_Ka textures/sponza_fabric_green_diff.tga
-map_Disp textures/sponza_fabric_ddn.tga
+map_Kd textures/sponza_fabric_green_diff.dds
+map_Ka textures/sponza_fabric_green_diff.dds
+map_Disp textures/sponza_fabric_ddn.dds
 
 
 newmtl fabric_f
@@ -203,9 +203,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/sponza_curtain_green_diff.tga
-map_Ka textures/sponza_curtain_green_diff.tga
-map_Disp textures/sponza_curtain_ddn.tga
+map_Kd textures/sponza_curtain_green_diff.dds
+map_Ka textures/sponza_curtain_green_diff.dds
+map_Disp textures/sponza_curtain_ddn.dds
 
 newmtl fabric_g
 Ns 7.843137
@@ -215,9 +215,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/sponza_curtain_blue_diff.tga
-map_Ka textures/sponza_curtain_blue_diff.tga
-map_Disp textures/sponza_curtain_ddn.tga
+map_Kd textures/sponza_curtain_blue_diff.dds
+map_Ka textures/sponza_curtain_blue_diff.dds
+map_Disp textures/sponza_curtain_ddn.dds
 
 
 newmtl flagpole
@@ -228,9 +228,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/sponza_flagpole_diff.tga
-map_Ka textures/sponza_flagpole_diff.tga
-map_Disp textures/sponza_flagpole_ddn.tga
+map_Kd textures/sponza_flagpole_diff.dds
+map_Ka textures/sponza_flagpole_diff.dds
+map_Disp textures/sponza_flagpole_ddn.dds
 
 newmtl floor
 Ns 7.843137
@@ -240,9 +240,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/sponza_floor_a_diff.tga
-map_Ka textures/sponza_floor_a_diff.tga
-map_Disp textures/sponza_floor_a_ddn.tga
+map_Kd textures/sponza_floor_a_diff.dds
+map_Ka textures/sponza_floor_a_diff.dds
+map_Disp textures/sponza_floor_a_ddn.dds
 
 newmtl leaf
 Ns 7.843137
@@ -252,10 +252,10 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Kd textures/sponza_thorn_diff.tga
-map_d textures/sponza_thorn_mask.tga
-map_Disp textures/sponza_thorn_ddn.tga
-map_Ka textures/sponza_thorn_diff.tga
+map_Kd textures/sponza_thorn_diff.dds
+map_d textures/sponza_thorn_mask.dds
+map_Disp textures/sponza_thorn_ddn.dds
+map_Ka textures/sponza_thorn_diff.dds
 
 newmtl roof
 Ns 7.843137
@@ -265,9 +265,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/sponza_roof_diff.tga
-map_Ka textures/sponza_roof_diff.tga
-map_Disp textures/sponza_roof_ddn.tga
+map_Kd textures/sponza_roof_diff.dds
+map_Ka textures/sponza_roof_diff.dds
+map_Disp textures/sponza_roof_ddn.dds
 
 newmtl vase
 Ns 7.843137
@@ -277,9 +277,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/vase_dif.tga
-map_Ka textures/vase_dif.tga
-map_Disp textures/vase_ddn.tga
+map_Kd textures/vase_dif.dds
+map_Ka textures/vase_dif.dds
+map_Disp textures/vase_ddn.dds
 
 newmtl vase_hanging
 Ns 7.843137
@@ -289,9 +289,9 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/vase_hanging.tga
-map_Ka textures/vase_hanging.tga
-map_Disp textures/vase_hanging_ddn.tga
+map_Kd textures/vase_hanging.dds
+map_Ka textures/vase_hanging.dds
+map_Disp textures/vase_hanging_ddn.dds
 
 newmtl vase_round
 Ns 7.843137
@@ -301,6 +301,6 @@ Ks 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd textures/vase_round.tga
-map_Disp textures/vase_round_ddn.tga
-map_Ka textures/vase_round.tga
+map_Kd textures/vase_round.dds
+map_Disp textures/vase_round_ddn.dds
+map_Ka textures/vase_round.dds

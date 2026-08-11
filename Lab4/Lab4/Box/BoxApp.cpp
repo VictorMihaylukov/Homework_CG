@@ -60,12 +60,18 @@ private:
     ComPtr<ID3D12DescriptorHeap> mCbvHeap = nullptr;
 
     //добавляем текстуру в класс
+    std::vector<ComPtr<ID3D12Resource>> mTextures;
+    std::vector<ComPtr<ID3D12Resource>> mTextureUploadHeaps;
+
     ComPtr<ID3D12Resource> mTexture = nullptr;
     ComPtr<ID3D12Resource> mTextureUploadHeap = nullptr;
 
     std::unique_ptr<UploadBuffer<ObjectConstants>> mObjectCB = nullptr;
 
 	std::unique_ptr<MeshGeometry> mBoxGeo = nullptr;
+
+    //материалы
+    std::vector<std::unique_ptr<Material>> mMaterials;
 
     ComPtr<ID3DBlob> mvsByteCode = nullptr;
     ComPtr<ID3DBlob> mpsByteCode = nullptr;
@@ -181,18 +187,13 @@ void BoxApp::Update(const GameTimer& gt)
 
 void BoxApp::Draw(const GameTimer& gt)
 {
-    // Reuse the memory associated with command recording.
-    // We can only reset when the associated command lists have finished execution on the GPU.
 	ThrowIfFailed(mDirectCmdListAlloc->Reset());
 
-	// A command list can be reset after it has been added to the command queue via ExecuteCommandList.
-    // Reusing the command list reuses memory.
     ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), mPSO.Get()));
 
     mCommandList->RSSetViewports(1, &mScreenViewport);
     mCommandList->RSSetScissorRects(1, &mScissorRect);
 
-    // Indicate a state transition on the resource usage.
     auto barrier1 = CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(),
         D3D12_RESOURCE_STATE_PRESENT,
@@ -200,11 +201,9 @@ void BoxApp::Draw(const GameTimer& gt)
 
     mCommandList->ResourceBarrier(1, &barrier1);
 
-    // Clear the back buffer and depth buffer.
     mCommandList->ClearRenderTargetView(CurrentBackBufferView(), Colors::LightSteelBlue, 0, nullptr);
     mCommandList->ClearDepthStencilView(DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 	
-    // Specify the buffers we are going to render to.
     auto rtv = CurrentBackBufferView();
     auto dsv = DepthStencilView();
 
@@ -222,28 +221,68 @@ void BoxApp::Draw(const GameTimer& gt)
     mCommandList->IASetIndexBuffer(&ibv);
     mCommandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     
-    mCommandList->SetGraphicsRootDescriptorTable(0, mCbvHeap->GetGPUDescriptorHandleForHeapStart());
-
-    //srv
-    mCommandList->SetGraphicsRootDescriptorTable(
-        0,
+    // CBV находится в дескрипторе [0]
+    CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(
         mCbvHeap->GetGPUDescriptorHandleForHeapStart());
 
-    CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(
-        mCbvHeap->GetGPUDescriptorHandleForHeapStart(),
-        1,
-        md3dDevice->GetDescriptorHandleIncrementSize(
-            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
-
     mCommandList->SetGraphicsRootDescriptorTable(
-        1,
-        srvHandle);
+        0,
+        cbvHandle);
 
-    mCommandList->DrawIndexedInstanced(
-		mBoxGeo->DrawArgs["box"].IndexCount, 
-		1, 0, 0, 0);
+    // размер одного дескриптор
+    UINT descriptorSize =
+        md3dDevice->GetDescriptorHandleIncrementSize(
+            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+    // рисуем каждый материал отдельно
+    for (size_t materialId = 0;
+        materialId < mMaterials.size();
+        ++materialId)
+    {
+        const auto& material = mMaterials[materialId];
+
+        std::string submeshName =
+            "material_" + std::to_string(materialId);
+
+        auto it = mBoxGeo->DrawArgs.find(submeshName);
+
+        if (it == mBoxGeo->DrawArgs.end())
+            continue;
+
+        const SubmeshGeometry& submesh = it->second;
+
+        if (submesh.IndexCount == 0)
+            continue;
+
+        // Если у материала нет текстуры, используем первую загруженную текстуру как запасную
+        int srvIndex = material->DiffuseSrvHeapIndex;
+
+        if (srvIndex < 0)
+        {
+            if (mTextures.empty())
+                continue;
+
+            srvIndex = 1;
+        }
+
+        CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(
+            mCbvHeap->GetGPUDescriptorHandleForHeapStart(),
+            srvIndex,
+            descriptorSize);
+
+        // Root parameter 1 = SRV
+        mCommandList->SetGraphicsRootDescriptorTable(
+            1,
+            srvHandle);
+
+        mCommandList->DrawIndexedInstanced(
+            submesh.IndexCount,
+            1,
+            submesh.StartIndexLocation,
+            submesh.BaseVertexLocation,
+            0);
+    }
 	
-    // Indicate a state transition on the resource usage.
     auto barrier2 = CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(),
         D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -251,20 +290,14 @@ void BoxApp::Draw(const GameTimer& gt)
 
     mCommandList->ResourceBarrier(1, &barrier2);
 
-    // Done recording commands.
 	ThrowIfFailed(mCommandList->Close());
  
-    // Add the command list to the queue for execution.
 	ID3D12CommandList* cmdsLists[] = { mCommandList.Get() };
 	mCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
 	
-	// swap the back and front buffers
 	ThrowIfFailed(mSwapChain->Present(0, 0));
 	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
 
-	// Wait until frame commands are complete.  This waiting is inefficient and is
-	// done for simplicity.  Later we will show how to organize our rendering code
-	// so we do not have to wait per frame.
 	FlushCommandQueue();
 }
 
@@ -315,23 +348,86 @@ void BoxApp::OnMouseMove(WPARAM btnState, int x, int y)
 
 void BoxApp::LoadTexture()
 {
-    std::wstring filename =
-        L"../../assets/textures_dds/sponza_arch_diff.dds";
+    std::string inputfile = "../../Assets/sponza.obj";
 
-    ThrowIfFailed(
-        DirectX::CreateDDSTextureFromFile12(
-            md3dDevice.Get(),
-            mCommandList.Get(),
-            filename.c_str(),
-            mTexture,
-            mTextureUploadHeap));
+    tinyobj::ObjReaderConfig reader_config;
+    reader_config.triangulate = true;
+
+    tinyobj::ObjReader reader;
+
+    if (!reader.ParseFromFile(inputfile, reader_config))
+    {
+        if (!reader.Error().empty())
+            OutputDebugStringA(reader.Error().c_str());
+
+        throw std::runtime_error(
+            "Failed to load sponza.obj while loading materials.");
+    }
+
+    const auto& materials = reader.GetMaterials();
+
+    mMaterials.clear();
+    mTextures.clear();
+    mTextureUploadHeaps.clear();
+
+    for (size_t i = 0; i < materials.size(); ++i)
+    {
+        const auto& srcMaterial = materials[i];
+
+        auto material = std::make_unique<Material>();
+
+        material->Name = srcMaterial.name;
+        material->MatCBIndex = static_cast<int>(i);
+
+        // материал без diffuse-текстуры
+        if (srcMaterial.diffuse_texname.empty())
+        {
+            material->DiffuseSrvHeapIndex = -1;
+
+            mMaterials.push_back(std::move(material));
+            continue;
+        }
+
+        // путь из MTL
+        std::wstring filename =
+            L"../../assets/" +
+            std::wstring(
+                srcMaterial.diffuse_texname.begin(),
+                srcMaterial.diffuse_texname.end());
+
+        ComPtr<ID3D12Resource> texture = nullptr;
+        ComPtr<ID3D12Resource> uploadHeap = nullptr;
+
+        ThrowIfFailed(
+            DirectX::CreateDDSTextureFromFile12(
+                md3dDevice.Get(),
+                mCommandList.Get(),
+                filename.c_str(),
+                texture,
+                uploadHeap));
+
+        material->DiffuseSrvHeapIndex =
+            1 + static_cast<int>(mTextures.size());
+
+        mTextures.push_back(texture);
+        mTextureUploadHeaps.push_back(uploadHeap);
+
+        OutputDebugStringA(
+            ("Loaded material texture: " +
+                srcMaterial.name +
+                " -> " +
+                srcMaterial.diffuse_texname +
+                "\n").c_str());
+
+        mMaterials.push_back(std::move(material));
+    }
 }
 
 void BoxApp::BuildDescriptorHeaps()
 {
     D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
     //увеличиваем кол-во дескрипторов
-    cbvHeapDesc.NumDescriptors = 2;
+    cbvHeapDesc.NumDescriptors = 32;
     cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	cbvHeapDesc.NodeMask = 0;
@@ -455,92 +551,208 @@ void BoxApp::BuildBoxGeometry()
     reader_config.triangulate = true;
 
     tinyobj::ObjReader reader;
+
     if (!reader.ParseFromFile(inputfile, reader_config))
     {
         if (!reader.Error().empty())
             OutputDebugStringA(reader.Error().c_str());
 
-        throw std::runtime_error("Failed to load sponza.obj (tinyobj). Check working directory / path.");
+        throw std::runtime_error(
+            "Failed to load sponza.obj (tinyobj).");
     }
 
-    auto& attrib = reader.GetAttrib();
-    auto& shapes = reader.GetShapes();
+    const auto& attrib = reader.GetAttrib();
+    const auto& shapes = reader.GetShapes();
 
     std::vector<Vertex> vertices;
-    std::vector<std::uint32_t> indices;
 
-    // Важно: для Sponza вершин/индексов > 65535, нужны 32-битные индексы.
     vertices.reserve(500000);
-    indices.reserve(500000);
+
+    // для каждого материала будем хранить индексы его треугольников
+    std::vector<std::vector<std::uint32_t>> materialIndices(
+        mMaterials.size());
+
+    if (materialIndices.empty())
+    {
+        throw std::runtime_error(
+            "Sponza: no materials were loaded.");
+    }
 
     for (const auto& shape : shapes)
     {
-        for (const auto& idx : shape.mesh.indices)
+        const auto& shapeIndices = shape.mesh.indices;
+        const auto& materialIds = shape.mesh.material_ids;
+
+        for (size_t i = 0; i < shapeIndices.size(); i += 3)
         {
-            Vertex v = {};
+            int materialId = -1;
 
-            // POSITION
-            v.Pos.x = attrib.vertices[3 * idx.vertex_index + 0];
-            v.Pos.y = attrib.vertices[3 * idx.vertex_index + 1];
-            v.Pos.z = attrib.vertices[3 * idx.vertex_index + 2];
+            if (i / 3 < materialIds.size())
+                materialId = materialIds[i / 3];
 
-            // Масштаб как раньше
-            v.Pos.x *= 0.01f;
-            v.Pos.y *= 0.01f;
-            v.Pos.z *= 0.01f;
-
-            // TEXCOORD
-            if (idx.texcoord_index >= 0 && !attrib.texcoords.empty())
+            // Если OBJ не указал материал или material_id некорректный,
+            // отправляем треугольник в материал 0.
+            if (materialId < 0 ||
+                materialId >= static_cast<int>(mMaterials.size()))
             {
-                v.TexC.x = attrib.texcoords[2 * idx.texcoord_index + 0];
-                v.TexC.y = 1.0f - attrib.texcoords[2 * idx.texcoord_index + 1];
-            }
-            else
-            {
-                v.TexC = XMFLOAT2(0.0f, 0.0f);
+                materialId = 0;
             }
 
-            vertices.push_back(v);
-            indices.push_back((std::uint32_t)indices.size());
+            for (int v = 0; v < 3; ++v)
+            {
+                const auto& idx = shapeIndices[i + v];
+
+                Vertex vertex = {};
+
+                // POSITION
+                vertex.Pos.x =
+                    attrib.vertices[3 * idx.vertex_index + 0];
+
+                vertex.Pos.y =
+                    attrib.vertices[3 * idx.vertex_index + 1];
+
+                vertex.Pos.z =
+                    attrib.vertices[3 * idx.vertex_index + 2];
+
+                // масштаб Sponza
+                vertex.Pos.x *= 0.01f;
+                vertex.Pos.y *= 0.01f;
+                vertex.Pos.z *= 0.01f;
+
+                // TEXCOORD
+                if (idx.texcoord_index >= 0 &&
+                    !attrib.texcoords.empty())
+                {
+                    vertex.TexC.x =
+                        attrib.texcoords[
+                            2 * idx.texcoord_index + 0];
+
+                    vertex.TexC.y =
+                        1.0f -
+                        attrib.texcoords[
+                            2 * idx.texcoord_index + 1];
+                }
+                else
+                {
+                    vertex.TexC =
+                        XMFLOAT2(0.0f, 0.0f);
+                }
+
+                std::uint32_t vertexIndex =
+                    static_cast<std::uint32_t>(vertices.size());
+
+                vertices.push_back(vertex);
+
+                if (materialId >= 0 &&
+                    materialId < static_cast<int>(materialIndices.size()))
+                {
+                    materialIndices[materialId].push_back(vertexIndex);
+                }
+            }
         }
     }
 
-    const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
-    const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint32_t);
+    const UINT vbByteSize =
+        static_cast<UINT>(
+            vertices.size() * sizeof(Vertex));
 
+    // создаём общий индексный буфер. вместо отдельного index buffer для каждого материала, собираем все индексы последовательно
+    std::vector<std::uint32_t> finalIndices;
+
+    finalIndices.reserve(vertices.size());
+
+    for (const auto& materialList : materialIndices)
+    {
+        for (std::uint32_t vertexIndex : materialList)
+        {
+            finalIndices.push_back(vertexIndex);
+        }
+    }
+
+    const UINT finalIbByteSize =
+        static_cast<UINT>(
+            finalIndices.size() * sizeof(std::uint32_t));
+
+    // создаём MeshGeometry
     mBoxGeo = std::make_unique<MeshGeometry>();
     mBoxGeo->Name = "sponzaGeo";
 
-    ThrowIfFailed(D3DCreateBlob(vbByteSize, &mBoxGeo->VertexBufferCPU));
-    CopyMemory(mBoxGeo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+    ThrowIfFailed(
+        D3DCreateBlob(vbByteSize,
+            &mBoxGeo->VertexBufferCPU));
 
-    ThrowIfFailed(D3DCreateBlob(ibByteSize, &mBoxGeo->IndexBufferCPU));
-    CopyMemory(mBoxGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+    CopyMemory(
+        mBoxGeo->VertexBufferCPU->GetBufferPointer(),
+        vertices.data(),
+        vbByteSize);
 
-    mBoxGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(
-        md3dDevice.Get(), mCommandList.Get(),
-        vertices.data(), vbByteSize,
-        mBoxGeo->VertexBufferUploader);
+    ThrowIfFailed(
+        D3DCreateBlob(finalIbByteSize,
+            &mBoxGeo->IndexBufferCPU));
 
-    mBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(
-        md3dDevice.Get(), mCommandList.Get(),
-        indices.data(), ibByteSize,
-        mBoxGeo->IndexBufferUploader);
+    CopyMemory(
+        mBoxGeo->IndexBufferCPU->GetBufferPointer(),
+        finalIndices.data(),
+        finalIbByteSize);
+
+    mBoxGeo->VertexBufferGPU =
+        d3dUtil::CreateDefaultBuffer(
+            md3dDevice.Get(),
+            mCommandList.Get(),
+            vertices.data(),
+            vbByteSize,
+            mBoxGeo->VertexBufferUploader);
+
+    if (finalIndices.empty())
+    {
+        throw std::runtime_error(
+            "Sponza: final index buffer is empty.");
+    }
+
+    mBoxGeo->IndexBufferGPU =
+        d3dUtil::CreateDefaultBuffer(
+            md3dDevice.Get(),
+            mCommandList.Get(),
+            finalIndices.data(),
+            finalIbByteSize,
+            mBoxGeo->IndexBufferUploader);
 
     mBoxGeo->VertexByteStride = sizeof(Vertex);
     mBoxGeo->VertexBufferByteSize = vbByteSize;
 
-    // КЛЮЧЕВО: 32-bit индексы
     mBoxGeo->IndexFormat = DXGI_FORMAT_R32_UINT;
-    mBoxGeo->IndexBufferByteSize = ibByteSize;
+    mBoxGeo->IndexBufferByteSize = finalIbByteSize;
 
-    SubmeshGeometry submesh;
-    submesh.IndexCount = (UINT)indices.size();
-    submesh.StartIndexLocation = 0;
-    submesh.BaseVertexLocation = 0;
+    // создаём Submesh для каждого материала
+    UINT startIndex = 0;
 
-    // Оставляем ключ "box", чтобы вообще ничего больше не менять в Draw().
-    mBoxGeo->DrawArgs["box"] = submesh;
+    for (size_t materialId = 0;
+        materialId < materialIndices.size();
+        ++materialId)
+    {
+        const auto& materialList =
+            materialIndices[materialId];
+
+        if (materialList.empty())
+            continue;
+
+        SubmeshGeometry submesh;
+
+        submesh.IndexCount =
+            static_cast<UINT>(materialList.size());
+
+        submesh.StartIndexLocation = startIndex;
+
+        submesh.BaseVertexLocation = 0;
+
+        std::string name =
+            "material_" +
+            std::to_string(materialId);
+
+        mBoxGeo->DrawArgs[name] = submesh;
+
+        startIndex += submesh.IndexCount;
+    }
 }
 
 void BoxApp::BuildPSO()
@@ -574,24 +786,34 @@ void BoxApp::BuildPSO()
 
 void BoxApp::BuildTextureSRV()
 {
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-    srvDesc.Shader4ComponentMapping =
-        D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-
-    srvDesc.Format = mTexture->GetDesc().Format;
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MostDetailedMip = 0;
-    srvDesc.Texture2D.MipLevels = mTexture->GetDesc().MipLevels;
-    srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-
-    CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(
-        mCbvHeap->GetCPUDescriptorHandleForHeapStart(),
-        1,
+    UINT descriptorSize =
         md3dDevice->GetDescriptorHandleIncrementSize(
-            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-    md3dDevice->CreateShaderResourceView(
-        mTexture.Get(),
-        &srvDesc,
-        hDescriptor);
+    for (size_t i = 0; i < mTextures.size(); ++i)
+    {
+        auto texture = mTextures[i];
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Shader4ComponentMapping =
+            D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+        srvDesc.Format = texture->GetDesc().Format;
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+        srvDesc.Texture2D.MipLevels =
+            texture->GetDesc().MipLevels;
+        srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+
+        // первый дескриптор 0 уже занят CBV, поэтому текстуры начинаются с 1
+        CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(
+            mCbvHeap->GetCPUDescriptorHandleForHeapStart(),
+            1 + static_cast<INT>(i),
+            descriptorSize);
+
+        md3dDevice->CreateShaderResourceView(
+            texture.Get(),
+            &srvDesc,
+            hDescriptor);
+    }
 }
