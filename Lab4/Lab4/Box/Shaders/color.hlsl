@@ -1,6 +1,9 @@
 cbuffer cbPerObject : register(b0)
 {
     float4x4 gWorldViewProj;
+
+    float2 gTexScale;
+    float2 gTexOffset;
 };
 
 Texture2D gTexture : register(t0);
@@ -31,5 +34,7 @@ VertexOut VS(VertexIn vin)
 
 float4 PS(VertexOut pin) : SV_TARGET
 {
-    return gTexture.Sample(gSampler, pin.TexC);
+    float2 animatedUV = pin.TexC * gTexScale + gTexOffset;
+
+    return gTexture.Sample(gSampler, animatedUV);
 }

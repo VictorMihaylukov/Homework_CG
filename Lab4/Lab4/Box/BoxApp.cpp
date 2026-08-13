@@ -24,6 +24,9 @@ struct Vertex
 struct ObjectConstants
 {
     XMFLOAT4X4 WorldViewProj = MathHelper::Identity4x4();
+
+    XMFLOAT2 TexScale = XMFLOAT2(4.0f, 4.0f);
+    XMFLOAT2 TexOffset = XMFLOAT2(0.0f, 0.0f);
 };
 
 class BoxApp : public D3DApp
@@ -87,6 +90,9 @@ private:
     float mTheta = 1.5f*XM_PI;
     float mPhi = XM_PIDIV4;
     float mRadius = 5.0f;
+
+    XMFLOAT2 mTexOffset = XMFLOAT2(0.0f, 0.0f);
+    XMFLOAT2 mTexSpeed = XMFLOAT2(0.2f, 0.0f);
 
     POINT mLastMousePos;
 };
@@ -179,9 +185,19 @@ void BoxApp::Update(const GameTimer& gt)
     XMMATRIX proj = XMLoadFloat4x4(&mProj);
     XMMATRIX worldViewProj = world*view*proj;
 
-	// Update the constant buffer with the latest worldViewProj matrix.
-	ObjectConstants objConstants;
-    XMStoreFloat4x4(&objConstants.WorldViewProj, XMMatrixTranspose(worldViewProj));
+    ObjectConstants objConstants;
+
+    XMStoreFloat4x4(
+        &objConstants.WorldViewProj,
+        XMMatrixTranspose(worldViewProj));
+
+    // Обновляем положение текстуры
+    mTexOffset.x += mTexSpeed.x * gt.DeltaTime();
+    mTexOffset.y += mTexSpeed.y * gt.DeltaTime();
+
+    objConstants.TexScale = XMFLOAT2(4.0f, 4.0f);
+    objConstants.TexOffset = mTexOffset;
+
     mObjectCB->CopyData(0, objConstants);
 }
 
