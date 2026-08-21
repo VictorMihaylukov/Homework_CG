@@ -91,7 +91,7 @@ private:
     float mRadius = 5.0f;
 
     XMFLOAT2 mTexOffset = XMFLOAT2(0.0f, 0.0f);
-    XMFLOAT2 mTexSpeed = XMFLOAT2(0.2f, 0.0f);
+    XMFLOAT2 mTexSpeed = XMFLOAT2(0.0f, 0.0f);
 
     POINT mLastMousePos;
 };
