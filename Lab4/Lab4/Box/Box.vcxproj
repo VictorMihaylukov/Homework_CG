@@ -151,6 +151,7 @@
     <ClCompile Include="..\..\Common\MathHelper.cpp" />
     <ClCompile Include="BoxApp.cpp" />
     <ClCompile Include="Gbuffer.cpp" />
+    <ClCompile Include="RenderingSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Common\d3dApp.h" />
@@ -160,9 +161,16 @@
     <ClInclude Include="..\..\Common\MathHelper.h" />
     <ClInclude Include="..\..\Common\UploadBuffer.h" />
     <ClInclude Include="Gbuffer.h" />
+    <ClInclude Include="RenderingSystem.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\color.hlsl">
+    <None Include="..\..\Assets\shaders\color.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="..\..\Assets\shaders\gbuffer.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="..\..\Assets\shaders\deferred_light.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

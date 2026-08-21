@@ -36,6 +36,9 @@
     <ClCompile Include="Gbuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="RenderingSystem.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Common\d3dApp.h">
@@ -59,9 +62,18 @@
     <ClInclude Include="Gbuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="RenderingSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\color.hlsl">
+    <None Include="..\..\Assets\shaders\color.hlsl">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\..\Assets\shaders\gbuffer.hlsl">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\..\Assets\shaders\deferred_light.hlsl">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>
