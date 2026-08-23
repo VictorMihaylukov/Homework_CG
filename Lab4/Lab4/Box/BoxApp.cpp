@@ -72,7 +72,7 @@ private:
     XMFLOAT4X4 mProj = MathHelper::Identity4x4();
 
     float mTheta = 1.5f * XM_PI;
-    float mPhi = 0.35f * XM_PI;
+    float mPhi = 0.30f * XM_PI;
     float mRadius = 18.0f;
 
     XMFLOAT2 mTexOffset = XMFLOAT2(0.0f, 0.0f);
@@ -110,7 +110,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 BoxApp::BoxApp(HINSTANCE hInstance)
     : D3DApp(hInstance)
 {
-    mMainWndCaption = L"HW2 - Deferred Rendering (Sponza)";
+    mMainWndCaption = L"HW3";
 }
 
 BoxApp::~BoxApp()
@@ -354,7 +354,6 @@ void BoxApp::SetupLights()
         mLights.push_back(sun);
     }
 
-    // Point lights по атриуму Sponza
     const XMFLOAT3 pointPositions[] =
     {
         {  0.0f, 2.5f,  0.0f },
@@ -416,7 +415,7 @@ void BoxApp::SetupLights()
 
 void BoxApp::LoadTexture()
 {
-    std::string inputfile = "../../Assets/sponza.obj";
+    std::string inputfile = "../../Assets/house.obj";
 
     tinyobj::ObjReaderConfig reader_config;
     reader_config.triangulate = true;
@@ -429,7 +428,7 @@ void BoxApp::LoadTexture()
             OutputDebugStringA(reader.Error().c_str());
 
         throw std::runtime_error(
-            "Failed to load sponza.obj while loading materials.");
+            "Failed to load house.obj while loading materials.");
     }
 
     const auto& materials = reader.GetMaterials();
@@ -513,7 +512,7 @@ void BoxApp::BuildConstantBuffers()
 
 void BoxApp::BuildBoxGeometry()
 {
-    std::string inputfile = "../../Assets/sponza.obj";
+    std::string inputfile = "../../Assets/house.obj";
 
     tinyobj::ObjReaderConfig reader_config;
     reader_config.triangulate = true;
@@ -525,7 +524,7 @@ void BoxApp::BuildBoxGeometry()
         if (!reader.Error().empty())
             OutputDebugStringA(reader.Error().c_str());
 
-        throw std::runtime_error("Failed to load sponza.obj (tinyobj).");
+        throw std::runtime_error("Failed to load house.obj (tinyobj).");
     }
 
     const auto& attrib = reader.GetAttrib();
@@ -537,7 +536,7 @@ void BoxApp::BuildBoxGeometry()
     std::vector<std::vector<std::uint32_t>> materialIndices(mMaterials.size());
 
     if (materialIndices.empty())
-        throw std::runtime_error("Sponza: no materials were loaded.");
+        throw std::runtime_error("house: no materials were loaded.");
 
     for (const auto& shape : shapes)
     {
@@ -563,9 +562,9 @@ void BoxApp::BuildBoxGeometry()
 
                 Vertex vertex = {};
 
-                vertex.Pos.x = attrib.vertices[3 * idx.vertex_index + 0] * 0.01f;
-                vertex.Pos.y = attrib.vertices[3 * idx.vertex_index + 1] * 0.01f;
-                vertex.Pos.z = attrib.vertices[3 * idx.vertex_index + 2] * 0.01f;
+                vertex.Pos.x = attrib.vertices[3 * idx.vertex_index + 0];
+                vertex.Pos.y = attrib.vertices[3 * idx.vertex_index + 1];
+                vertex.Pos.z = attrib.vertices[3 * idx.vertex_index + 2];
 
                 if (idx.normal_index >= 0 && !attrib.normals.empty())
                 {
@@ -613,7 +612,7 @@ void BoxApp::BuildBoxGeometry()
         static_cast<UINT>(finalIndices.size() * sizeof(std::uint32_t));
 
     mBoxGeo = std::make_unique<MeshGeometry>();
-    mBoxGeo->Name = "sponzaGeo";
+    mBoxGeo->Name = "houseGeo";
 
     ThrowIfFailed(D3DCreateBlob(vbByteSize, &mBoxGeo->VertexBufferCPU));
     CopyMemory(mBoxGeo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
@@ -629,7 +628,7 @@ void BoxApp::BuildBoxGeometry()
         mBoxGeo->VertexBufferUploader);
 
     if (finalIndices.empty())
-        throw std::runtime_error("Sponza: final index buffer is empty.");
+        throw std::runtime_error("house: final index buffer is empty.");
 
     mBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(
         md3dDevice.Get(),
