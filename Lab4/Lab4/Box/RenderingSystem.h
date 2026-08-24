@@ -93,7 +93,10 @@ private:
     Microsoft::WRL::ComPtr<ID3D12PipelineState> mLightingPSO;
 
     Microsoft::WRL::ComPtr<ID3DBlob> mGeometryVS;
+    Microsoft::WRL::ComPtr<ID3DBlob> mGeometryHS;
+    Microsoft::WRL::ComPtr<ID3DBlob> mGeometryDS;
     Microsoft::WRL::ComPtr<ID3DBlob> mGeometryPS;
+
     Microsoft::WRL::ComPtr<ID3DBlob> mLightingVS;
     Microsoft::WRL::ComPtr<ID3DBlob> mLightingPS;
 

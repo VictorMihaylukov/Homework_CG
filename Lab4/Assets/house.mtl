@@ -70,8 +70,10 @@ Pc 0.000000
 Pcr 0.030000
 aniso 0.000000
 anisor 0.000000
+map_Kd textures/rooftop_0010_color_2k.dds
 map_Ks textures/rooftop_0010_ao_2k.dds
 map_Bump -bm 1.000000 textures/rooftop_0010_normal_opengl_2k.dds
+disp textures/rooftop_0010_height_2k.dds
 
 newmtl Material.007
 Ks 0.500000 0.500000 0.500000

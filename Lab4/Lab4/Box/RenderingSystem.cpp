@@ -96,15 +96,25 @@ void RenderingSystem::ExecuteLightingPass(
 
 void RenderingSystem::BuildGeometryRootSignature(ID3D12Device* device)
 {
-    CD3DX12_ROOT_PARAMETER slotRootParameter[2];
+    CD3DX12_ROOT_PARAMETER slotRootParameter[5];
 
     CD3DX12_DESCRIPTOR_RANGE cbvTable;
     cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
     slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable);
 
-    CD3DX12_DESCRIPTOR_RANGE srvTable;
-    srvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
-    slotRootParameter[1].InitAsDescriptorTable(1, &srvTable);
+    CD3DX12_DESCRIPTOR_RANGE diffuseTable;
+    diffuseTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+    slotRootParameter[1].InitAsDescriptorTable(1, &diffuseTable);
+
+    CD3DX12_DESCRIPTOR_RANGE normalTable;
+    normalTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
+    slotRootParameter[2].InitAsDescriptorTable(1, &normalTable);
+
+    CD3DX12_DESCRIPTOR_RANGE displacementTable;
+    displacementTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2);
+    slotRootParameter[3].InitAsDescriptorTable(1, &displacementTable);
+
+    slotRootParameter[4].InitAsConstants(2, 1, 0);
 
     CD3DX12_STATIC_SAMPLER_DESC samplerDesc(
         0,
@@ -114,19 +124,14 @@ void RenderingSystem::BuildGeometryRootSignature(ID3D12Device* device)
         D3D12_TEXTURE_ADDRESS_MODE_WRAP);
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(
-        2,
-        slotRootParameter,
-        1,
-        &samplerDesc,
+        5, slotRootParameter, 1, &samplerDesc,
         D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
     ComPtr<ID3DBlob> serializedRootSig = nullptr;
     ComPtr<ID3DBlob> errorBlob = nullptr;
     HRESULT hr = D3D12SerializeRootSignature(
-        &rootSigDesc,
-        D3D_ROOT_SIGNATURE_VERSION_1,
-        serializedRootSig.GetAddressOf(),
-        errorBlob.GetAddressOf());
+        &rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+        serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
 
     if (errorBlob != nullptr)
         ::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
@@ -134,8 +139,7 @@ void RenderingSystem::BuildGeometryRootSignature(ID3D12Device* device)
     ThrowIfFailed(hr);
 
     ThrowIfFailed(device->CreateRootSignature(
-        0,
-        serializedRootSig->GetBufferPointer(),
+        0, serializedRootSig->GetBufferPointer(),
         serializedRootSig->GetBufferSize(),
         IID_PPV_ARGS(&mGeometryRootSignature)));
 }
@@ -190,6 +194,13 @@ void RenderingSystem::BuildShaders()
 {
     mGeometryVS = d3dUtil::CompileShader(
         L"../../Assets/shaders/gbuffer.hlsl", nullptr, "VS", "vs_5_0");
+
+    mGeometryHS = d3dUtil::CompileShader(
+        L"../../Assets/shaders/gbuffer.hlsl", nullptr, "HS", "hs_5_0");
+
+    mGeometryDS = d3dUtil::CompileShader(
+        L"../../Assets/shaders/gbuffer.hlsl", nullptr, "DS", "ds_5_0");
+
     mGeometryPS = d3dUtil::CompileShader(
         L"../../Assets/shaders/gbuffer.hlsl", nullptr, "PS", "ps_5_0");
 
@@ -222,15 +233,25 @@ void RenderingSystem::BuildPSOs(
         reinterpret_cast<BYTE*>(mGeometryVS->GetBufferPointer()),
         mGeometryVS->GetBufferSize()
     };
+    geoPsoDesc.HS = {
+    reinterpret_cast<BYTE*>(mGeometryHS->GetBufferPointer()),
+    mGeometryHS->GetBufferSize()
+    };
+
+    geoPsoDesc.DS = {
+        reinterpret_cast<BYTE*>(mGeometryDS->GetBufferPointer()),
+        mGeometryDS->GetBufferSize()
+    };
     geoPsoDesc.PS = {
         reinterpret_cast<BYTE*>(mGeometryPS->GetBufferPointer()),
         mGeometryPS->GetBufferSize()
     };
     geoPsoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    geoPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
     geoPsoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     geoPsoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     geoPsoDesc.SampleMask = UINT_MAX;
-    geoPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    geoPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
     geoPsoDesc.NumRenderTargets = 3;
     geoPsoDesc.RTVFormats[0] = Gbuffer::PositionFormat;
     geoPsoDesc.RTVFormats[1] = Gbuffer::NormalFormat;

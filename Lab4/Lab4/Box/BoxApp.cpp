@@ -25,8 +25,17 @@ struct ObjectConstants
 {
     XMFLOAT4X4 World = MathHelper::Identity4x4();
     XMFLOAT4X4 WorldViewProj = MathHelper::Identity4x4();
+
     XMFLOAT2 TexScale = XMFLOAT2(1.0f, 1.0f);
     XMFLOAT2 TexOffset = XMFLOAT2(0.0f, 0.0f);
+
+    XMFLOAT3 EyePosW = XMFLOAT3(0.0f, 0.0f, 0.0f);
+    float DisplacementScale = 0.08f;
+
+    float TessNear = 5.0f;
+    float TessFar = 30.0f;
+    float TessMin = 2.0f;
+    float TessMax = 16.0f;
 };
 
 class BoxApp : public D3DApp
@@ -196,13 +205,21 @@ void BoxApp::Update(const GameTimer& gt)
     objConstants.TexScale = XMFLOAT2(1.0f, 1.0f);
     objConstants.TexOffset = mTexOffset;
 
-    mObjectCB->CopyData(0, objConstants);
+    objConstants.EyePosW = mEyePos;
+    objConstants.DisplacementScale = 0.08f;
+
+    objConstants.TessNear = 5.0f;
+    objConstants.TessFar = 30.0f;
+    objConstants.TessMin = 2.0f;
+    objConstants.TessMax = 16.0f;
 
     mRenderingSystem->UpdateLights(
         mEyePos,
         mAmbientLight,
         mLights.data(),
         static_cast<int>(mLights.size()));
+
+    mObjectCB->CopyData(0, objConstants);
 }
 
 void BoxApp::Draw(const GameTimer& gt)
@@ -224,7 +241,7 @@ void BoxApp::Draw(const GameTimer& gt)
 
     mCommandList->IASetVertexBuffers(0, 1, &vbv);
     mCommandList->IASetIndexBuffer(&ibv);
-    mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST);
 
     CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(
         mCbvHeap->GetGPUDescriptorHandleForHeapStart());
@@ -237,29 +254,77 @@ void BoxApp::Draw(const GameTimer& gt)
     {
         const auto& material = mMaterials[materialId];
 
-        std::string submeshName = "material_" + std::to_string(materialId);
+        std::string submeshName =
+            "material_" + std::to_string(materialId);
+
         auto it = mBoxGeo->DrawArgs.find(submeshName);
+
         if (it == mBoxGeo->DrawArgs.end())
             continue;
 
         const SubmeshGeometry& submesh = it->second;
+
         if (submesh.IndexCount == 0)
             continue;
 
-        int srvIndex = material->DiffuseSrvHeapIndex;
-        if (srvIndex < 0)
+        int diffuseIndex = material->DiffuseSrvHeapIndex;
+
+        if (diffuseIndex < 1)
         {
             if (mTextures.empty())
                 continue;
-            srvIndex = 1;
+            diffuseIndex = 1;
         }
 
-        CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(
+        CD3DX12_GPU_DESCRIPTOR_HANDLE diffuseHandle(
             mCbvHeap->GetGPUDescriptorHandleForHeapStart(),
-            srvIndex,
+            diffuseIndex,
             descriptorSize);
 
-        mCommandList->SetGraphicsRootDescriptorTable(1, srvHandle);
+        mCommandList->SetGraphicsRootDescriptorTable(
+            1,
+            diffuseHandle);
+
+        int normalIndex = material->NormalSrvHeapIndex;
+
+        if (normalIndex < 1)
+            normalIndex = diffuseIndex;
+
+        CD3DX12_GPU_DESCRIPTOR_HANDLE normalHandle(
+            mCbvHeap->GetGPUDescriptorHandleForHeapStart(),
+            normalIndex,
+            descriptorSize);
+
+        mCommandList->SetGraphicsRootDescriptorTable(
+            2,
+            normalHandle);
+
+        int displacementIndex =
+            material->DisplacementSrvHeapIndex;
+
+        if (displacementIndex < 1)
+            displacementIndex = diffuseIndex;
+
+        CD3DX12_GPU_DESCRIPTOR_HANDLE displacementHandle(
+            mCbvHeap->GetGPUDescriptorHandleForHeapStart(),
+            displacementIndex,
+            descriptorSize);
+
+        mCommandList->SetGraphicsRootDescriptorTable(
+            3,
+            displacementHandle);
+
+        UINT flags[2] =
+        {
+            material->NormalSrvHeapIndex >= 1 ? 1u : 0u,
+            material->DisplacementSrvHeapIndex >= 1 ? 1u : 0u
+        };
+
+        mCommandList->SetGraphicsRoot32BitConstants(
+            4,
+            2,
+            flags,
+            0);
 
         mCommandList->DrawIndexedInstanced(
             submesh.IndexCount,
@@ -345,7 +410,7 @@ void BoxApp::SetupLights()
 {
     mLights.clear();
 
-    // Directional - солнце
+    // Directional - СЃРѕР»РЅС†Рµ
     {
         DeferredLight sun;
         sun.Type = static_cast<int>(LightType::Directional);
@@ -387,7 +452,7 @@ void BoxApp::SetupLights()
         mLights.push_back(point);
     }
 
-    // Spot lights сверху
+    // Spot lights СЃРІРµСЂС…Сѓ
     {
         DeferredLight spot;
         spot.Type = static_cast<int>(LightType::Spot);
@@ -437,26 +502,14 @@ void BoxApp::LoadTexture()
     mTextures.clear();
     mTextureUploadHeaps.clear();
 
-    for (size_t i = 0; i < materials.size(); ++i)
+    auto loadTexture = [&](const std::string& texName) -> int
     {
-        const auto& srcMaterial = materials[i];
-
-        auto material = std::make_unique<Material>();
-        material->Name = srcMaterial.name;
-        material->MatCBIndex = static_cast<int>(i);
-
-        if (srcMaterial.diffuse_texname.empty())
-        {
-            material->DiffuseSrvHeapIndex = -1;
-            mMaterials.push_back(std::move(material));
-            continue;
-        }
+        if (texName.empty())
+            return -1;
 
         std::wstring filename =
             L"../../assets/" +
-            std::wstring(
-                srcMaterial.diffuse_texname.begin(),
-                srcMaterial.diffuse_texname.end());
+            std::wstring(texName.begin(), texName.end());
 
         ComPtr<ID3D12Resource> texture = nullptr;
         ComPtr<ID3D12Resource> uploadHeap = nullptr;
@@ -469,11 +522,30 @@ void BoxApp::LoadTexture()
                 texture,
                 uploadHeap));
 
-        material->DiffuseSrvHeapIndex =
-            1 + static_cast<int>(mTextures.size());
-
+        int srvIndex = 1 + static_cast<int>(mTextures.size());
         mTextures.push_back(texture);
         mTextureUploadHeaps.push_back(uploadHeap);
+        return srvIndex;
+    };
+
+    for (size_t i = 0; i < materials.size(); ++i)
+    {
+        const auto& srcMaterial = materials[i];
+
+        auto material = std::make_unique<Material>();
+        material->Name = srcMaterial.name;
+        material->MatCBIndex = static_cast<int>(i);
+
+        material->DiffuseSrvHeapIndex =
+            loadTexture(srcMaterial.diffuse_texname);
+
+        std::string normalName = !srcMaterial.normal_texname.empty()
+            ? srcMaterial.normal_texname
+            : srcMaterial.bump_texname;
+        material->NormalSrvHeapIndex = loadTexture(normalName);
+
+        material->DisplacementSrvHeapIndex =
+            loadTexture(srcMaterial.displacement_texname);
 
         mMaterials.push_back(std::move(material));
     }

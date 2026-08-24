@@ -54,34 +54,6 @@ inline std::wstring AnsiToWString(const std::string& str)
     return std::wstring(buffer);
 }
 
-/*
-#if defined(_DEBUG)
-    #ifndef Assert
-    #define Assert(x, description)                                  \
-    {                                                               \
-        static bool ignoreAssert = false;                           \
-        if(!ignoreAssert && !(x))                                   \
-        {                                                           \
-            Debug::AssertResult result = Debug::ShowAssertDialog(   \
-            (L#x), description, AnsiToWString(__FILE__), __LINE__); \
-        if(result == Debug::AssertIgnore)                           \
-        {                                                           \
-            ignoreAssert = true;                                    \
-        }                                                           \
-                    else if(result == Debug::AssertBreak)           \
-        {                                                           \
-            __debugbreak();                                         \
-        }                                                           \
-        }                                                           \
-    }
-    #endif
-#else
-    #ifndef Assert
-    #define Assert(x, description) 
-    #endif
-#endif 		
-    */
-
 class d3dUtil
 {
 public:
@@ -92,17 +64,6 @@ public:
 
     static UINT CalcConstantBufferByteSize(UINT byteSize)
     {
-        // Constant buffers must be a multiple of the minimum hardware
-        // allocation size (usually 256 bytes).  So round up to nearest
-        // multiple of 256.  We do this by adding 255 and then masking off
-        // the lower 2 bytes which store all bits < 256.
-        // Example: Suppose byteSize = 300.
-        // (300 + 255) & ~255
-        // 555 & ~255
-        // 0x022B & ~0x00ff
-        // 0x022B & 0xff00
-        // 0x0200
-        // 512
         return (byteSize + 255) & ~255;
     }
 
@@ -136,28 +97,19 @@ public:
     int LineNumber = -1;
 };
 
-// Defines a subrange of geometry in a MeshGeometry.  This is for when multiple
-// geometries are stored in one vertex and index buffer.  It provides the offsets
-// and data needed to draw a subset of geometry stores in the vertex and index 
-// buffers so that we can implement the technique described by Figure 6.3.
 struct SubmeshGeometry
 {
 	UINT IndexCount = 0;
 	UINT StartIndexLocation = 0;
 	INT BaseVertexLocation = 0;
 
-    // Bounding box of the geometry defined by this submesh. 
-    // This is used in later chapters of the book.
 	DirectX::BoundingBox Bounds;
 };
 
 struct MeshGeometry
 {
-	// Give it a name so we can look it up by name.
 	std::string Name;
 
-	// System memory copies.  Use Blobs because the vertex/index format can be generic.
-	// It is up to the client to cast appropriately.  
 	Microsoft::WRL::ComPtr<ID3DBlob> VertexBufferCPU = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> IndexBufferCPU  = nullptr;
 
@@ -167,15 +119,11 @@ struct MeshGeometry
 	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferUploader = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferUploader = nullptr;
 
-    // Data about the buffers.
 	UINT VertexByteStride = 0;
 	UINT VertexBufferByteSize = 0;
 	DXGI_FORMAT IndexFormat = DXGI_FORMAT_R16_UINT;
 	UINT IndexBufferByteSize = 0;
 
-	// A MeshGeometry may store multiple geometries in one vertex/index buffer.
-	// Use this container to define the Submesh geometries so we can draw
-	// the Submeshes individually.
 	std::unordered_map<std::string, SubmeshGeometry> DrawArgs;
 
 	D3D12_VERTEX_BUFFER_VIEW VertexBufferView()const
@@ -198,7 +146,6 @@ struct MeshGeometry
 		return ibv;
 	}
 
-	// We can free this memory after we finish upload to the GPU.
 	void DisposeUploaders()
 	{
 		VertexBufferUploader = nullptr;
@@ -209,11 +156,11 @@ struct MeshGeometry
 struct Light
 {
     DirectX::XMFLOAT3 Strength = { 0.5f, 0.5f, 0.5f };
-    float FalloffStart = 1.0f;                          // point/spot light only
-    DirectX::XMFLOAT3 Direction = { 0.0f, -1.0f, 0.0f };// directional/spot light only
-    float FalloffEnd = 10.0f;                           // point/spot light only
-    DirectX::XMFLOAT3 Position = { 0.0f, 0.0f, 0.0f };  // point/spot light only
-    float SpotPower = 64.0f;                            // spot light only
+    float FalloffStart = 1.0f;                         
+    DirectX::XMFLOAT3 Direction = { 0.0f, -1.0f, 0.0f };
+    float FalloffEnd = 10.0f;                         
+    DirectX::XMFLOAT3 Position = { 0.0f, 0.0f, 0.0f }; 
+    float SpotPower = 64.0f;                          
 };
 
 #define MaxLights 16
@@ -224,7 +171,6 @@ struct MaterialConstants
 	DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
 	float Roughness = 0.25f;
 
-	// Used in texture mapping.
 	DirectX::XMFLOAT4X4 MatTransform = MathHelper::Identity4x4();
 };
 
@@ -233,12 +179,10 @@ struct Material
 	std::string Name;
 
 	int MatCBIndex = -1;
-
 	int DiffuseSrvHeapIndex = -1;
-
 	int NormalSrvHeapIndex = -1;
-
     int NumFramesDirty = 0;
+    int DisplacementSrvHeapIndex = -1;
 
 	DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
 	DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
@@ -248,7 +192,6 @@ struct Material
 
 struct Texture
 {
-	// Unique material name for lookup.
 	std::string Name;
 
 	std::wstring Filename;
