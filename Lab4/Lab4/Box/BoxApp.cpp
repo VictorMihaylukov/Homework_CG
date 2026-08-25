@@ -3,12 +3,15 @@
 #include "../../Common/UploadBuffer.h"
 #include "../../Common/DDSTextureLoader.h"
 #include "RenderingSystem.h"
+#include "SpatialCulling.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 #include <vector>
 #include <string>
 #include <stdexcept>
+#include <numeric>
+#include <sstream>
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -63,6 +66,9 @@ private:
     void LoadTexture();
     void BuildTextureSRV();
     void SetupLights();
+    void BuildSceneObjects();
+    void UpdateVisibility();
+    void UpdateCullingInput();
 
 private:
     std::unique_ptr<RenderingSystem> mRenderingSystem;
@@ -74,6 +80,17 @@ private:
 
     std::unique_ptr<UploadBuffer<ObjectConstants>> mObjectCB = nullptr;
     std::unique_ptr<MeshGeometry> mBoxGeo = nullptr;
+
+    DirectX::BoundingBox mLocalBounds;
+    std::vector<SceneObject> mSceneObjects;
+    std::vector<int> mVisibleObjects;
+    Octree mOctree;
+
+    bool mFrustumCullingEnabled = true;
+    bool mOctreeEnabled = true;
+    bool mPrevCKeyDown = false;
+    bool mPrevOKeyDown = false;
+
     std::vector<std::unique_ptr<Material>> mMaterials;
 
     XMFLOAT4X4 mWorld = MathHelper::Identity4x4();
@@ -119,7 +136,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 BoxApp::BoxApp(HINSTANCE hInstance)
     : D3DApp(hInstance)
 {
-    mMainWndCaption = L"HW3";
+    mMainWndCaption = L"HW4 - Frustum Culling + Octree";
 }
 
 BoxApp::~BoxApp()
@@ -141,10 +158,11 @@ bool BoxApp::Initialize()
         mClientHeight);
 
     BuildDescriptorHeaps();
-    BuildConstantBuffers();
     LoadTexture();
     BuildTextureSRV();
     BuildBoxGeometry();
+    BuildSceneObjects();
+    BuildConstantBuffers();
     SetupLights();
 
     ThrowIfFailed(mCommandList->Close());
@@ -178,6 +196,8 @@ void BoxApp::OnResize()
 
 void BoxApp::Update(const GameTimer& gt)
 {
+    UpdateCullingInput();
+
     float x = mRadius * sinf(mPhi) * cosf(mTheta);
     float z = mRadius * sinf(mPhi) * sinf(mTheta);
     float y = mRadius * cosf(mPhi);
@@ -191,27 +211,32 @@ void BoxApp::Update(const GameTimer& gt)
     XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
     XMStoreFloat4x4(&mView, view);
 
-    XMMATRIX world = XMLoadFloat4x4(&mWorld);
     XMMATRIX proj = XMLoadFloat4x4(&mProj);
-    XMMATRIX worldViewProj = world * view * proj;
-
-    ObjectConstants objConstants;
-    XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
-    XMStoreFloat4x4(&objConstants.WorldViewProj, XMMatrixTranspose(worldViewProj));
 
     mTexOffset.x += mTexSpeed.x * gt.DeltaTime();
     mTexOffset.y += mTexSpeed.y * gt.DeltaTime();
 
-    objConstants.TexScale = XMFLOAT2(1.0f, 1.0f);
-    objConstants.TexOffset = mTexOffset;
+    for (size_t i = 0; i < mSceneObjects.size(); ++i)
+    {
+        XMMATRIX world = XMLoadFloat4x4(&mSceneObjects[i].World);
+        XMMATRIX worldViewProj = world * view * proj;
 
-    objConstants.EyePosW = mEyePos;
-    objConstants.DisplacementScale = 0.08f;
+        ObjectConstants objConstants;
+        XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
+        XMStoreFloat4x4(&objConstants.WorldViewProj, XMMatrixTranspose(worldViewProj));
+        objConstants.TexScale = XMFLOAT2(1.0f, 1.0f);
+        objConstants.TexOffset = mTexOffset;
+        objConstants.EyePosW = mEyePos;
+        objConstants.DisplacementScale = 0.08f;
+        objConstants.TessNear = 5.0f;
+        objConstants.TessFar = 30.0f;
+        objConstants.TessMin = 2.0f;
+        objConstants.TessMax = 16.0f;
 
-    objConstants.TessNear = 5.0f;
-    objConstants.TessFar = 30.0f;
-    objConstants.TessMin = 2.0f;
-    objConstants.TessMax = 16.0f;
+        mObjectCB->CopyData(static_cast<int>(i), objConstants);
+    }
+
+    UpdateVisibility();
 
     mRenderingSystem->UpdateLights(
         mEyePos,
@@ -219,7 +244,12 @@ void BoxApp::Update(const GameTimer& gt)
         mLights.data(),
         static_cast<int>(mLights.size()));
 
-    mObjectCB->CopyData(0, objConstants);
+    std::wostringstream caption;
+    caption << L"HW4 | objects: " << mSceneObjects.size()
+            << L" | visible: " << mVisibleObjects.size()
+            << L" | C: frustum " << (mFrustumCullingEnabled ? L"ON" : L"OFF")
+            << L" | O: octree " << (mOctreeEnabled ? L"ON" : L"OFF");
+    SetWindowText(mhMainWnd, caption.str().c_str());
 }
 
 void BoxApp::Draw(const GameTimer& gt)
@@ -230,7 +260,6 @@ void BoxApp::Draw(const GameTimer& gt)
     mCommandList->RSSetViewports(1, &mScreenViewport);
     mCommandList->RSSetScissorRects(1, &mScissorRect);
 
-    // ---- Geometry pass -> G-Buffer ----
     mRenderingSystem->BeginGeometryPass(mCommandList.Get());
 
     ID3D12DescriptorHeap* descriptorHeaps[] = { mCbvHeap.Get() };
@@ -243,100 +272,84 @@ void BoxApp::Draw(const GameTimer& gt)
     mCommandList->IASetIndexBuffer(&ibv);
     mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST);
 
-    CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(
-        mCbvHeap->GetGPUDescriptorHandleForHeapStart());
-    mCommandList->SetGraphicsRootDescriptorTable(0, cbvHandle);
-
     UINT descriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(
         D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-    for (size_t materialId = 0; materialId < mMaterials.size(); ++materialId)
+    const UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+    const D3D12_GPU_VIRTUAL_ADDRESS objectCBBase =
+        mObjectCB->Resource()->GetGPUVirtualAddress();
+
+    for (int objectIndex : mVisibleObjects)
     {
-        const auto& material = mMaterials[materialId];
+        mCommandList->SetGraphicsRootConstantBufferView(
+            0,
+            objectCBBase + static_cast<UINT64>(objectIndex) * objCBByteSize);
 
-        std::string submeshName =
-            "material_" + std::to_string(materialId);
-
-        auto it = mBoxGeo->DrawArgs.find(submeshName);
-
-        if (it == mBoxGeo->DrawArgs.end())
-            continue;
-
-        const SubmeshGeometry& submesh = it->second;
-
-        if (submesh.IndexCount == 0)
-            continue;
-
-        int diffuseIndex = material->DiffuseSrvHeapIndex;
-
-        if (diffuseIndex < 1)
+        for (size_t materialId = 0; materialId < mMaterials.size(); ++materialId)
         {
-            if (mTextures.empty())
+            const auto& material = mMaterials[materialId];
+            std::string submeshName = "material_" + std::to_string(materialId);
+            auto it = mBoxGeo->DrawArgs.find(submeshName);
+
+            if (it == mBoxGeo->DrawArgs.end())
                 continue;
-            diffuseIndex = 1;
+
+            const SubmeshGeometry& submesh = it->second;
+            if (submesh.IndexCount == 0)
+                continue;
+
+            int diffuseIndex = material->DiffuseSrvHeapIndex;
+            if (diffuseIndex < 1)
+            {
+                if (mTextures.empty())
+                    continue;
+                diffuseIndex = 1;
+            }
+
+            CD3DX12_GPU_DESCRIPTOR_HANDLE diffuseHandle(
+                mCbvHeap->GetGPUDescriptorHandleForHeapStart(),
+                diffuseIndex,
+                descriptorSize);
+            mCommandList->SetGraphicsRootDescriptorTable(1, diffuseHandle);
+
+            int normalIndex = material->NormalSrvHeapIndex;
+            if (normalIndex < 1)
+                normalIndex = diffuseIndex;
+
+            CD3DX12_GPU_DESCRIPTOR_HANDLE normalHandle(
+                mCbvHeap->GetGPUDescriptorHandleForHeapStart(),
+                normalIndex,
+                descriptorSize);
+            mCommandList->SetGraphicsRootDescriptorTable(2, normalHandle);
+
+            int displacementIndex = material->DisplacementSrvHeapIndex;
+            if (displacementIndex < 1)
+                displacementIndex = diffuseIndex;
+
+            CD3DX12_GPU_DESCRIPTOR_HANDLE displacementHandle(
+                mCbvHeap->GetGPUDescriptorHandleForHeapStart(),
+                displacementIndex,
+                descriptorSize);
+            mCommandList->SetGraphicsRootDescriptorTable(3, displacementHandle);
+
+            UINT flags[2] =
+            {
+                material->NormalSrvHeapIndex >= 1 ? 1u : 0u,
+                material->DisplacementSrvHeapIndex >= 1 ? 1u : 0u
+            };
+
+            mCommandList->SetGraphicsRoot32BitConstants(4, 2, flags, 0);
+            mCommandList->DrawIndexedInstanced(
+                submesh.IndexCount,
+                1,
+                submesh.StartIndexLocation,
+                submesh.BaseVertexLocation,
+                0);
         }
-
-        CD3DX12_GPU_DESCRIPTOR_HANDLE diffuseHandle(
-            mCbvHeap->GetGPUDescriptorHandleForHeapStart(),
-            diffuseIndex,
-            descriptorSize);
-
-        mCommandList->SetGraphicsRootDescriptorTable(
-            1,
-            diffuseHandle);
-
-        int normalIndex = material->NormalSrvHeapIndex;
-
-        if (normalIndex < 1)
-            normalIndex = diffuseIndex;
-
-        CD3DX12_GPU_DESCRIPTOR_HANDLE normalHandle(
-            mCbvHeap->GetGPUDescriptorHandleForHeapStart(),
-            normalIndex,
-            descriptorSize);
-
-        mCommandList->SetGraphicsRootDescriptorTable(
-            2,
-            normalHandle);
-
-        int displacementIndex =
-            material->DisplacementSrvHeapIndex;
-
-        if (displacementIndex < 1)
-            displacementIndex = diffuseIndex;
-
-        CD3DX12_GPU_DESCRIPTOR_HANDLE displacementHandle(
-            mCbvHeap->GetGPUDescriptorHandleForHeapStart(),
-            displacementIndex,
-            descriptorSize);
-
-        mCommandList->SetGraphicsRootDescriptorTable(
-            3,
-            displacementHandle);
-
-        UINT flags[2] =
-        {
-            material->NormalSrvHeapIndex >= 1 ? 1u : 0u,
-            material->DisplacementSrvHeapIndex >= 1 ? 1u : 0u
-        };
-
-        mCommandList->SetGraphicsRoot32BitConstants(
-            4,
-            2,
-            flags,
-            0);
-
-        mCommandList->DrawIndexedInstanced(
-            submesh.IndexCount,
-            1,
-            submesh.StartIndexLocation,
-            submesh.BaseVertexLocation,
-            0);
     }
 
     mRenderingSystem->EndGeometryPass(mCommandList.Get());
 
-    // Lighting pass -> back buffer
     auto barrierToRT = CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(),
         D3D12_RESOURCE_STATE_PRESENT,
@@ -399,7 +412,7 @@ void BoxApp::OnMouseMove(WPARAM btnState, int x, int y)
         float dy = 0.05f * static_cast<float>(y - mLastMousePos.y);
 
         mRadius += dx - dy;
-        mRadius = MathHelper::Clamp(mRadius, 5.0f, 50.0f);
+        mRadius = MathHelper::Clamp(mRadius, 5.0f, 350.0f);
     }
 
     mLastMousePos.x = x;
@@ -565,21 +578,9 @@ void BoxApp::BuildDescriptorHeaps()
 
 void BoxApp::BuildConstantBuffers()
 {
+    const UINT objectCount = static_cast<UINT>((std::max)(size_t(1), mSceneObjects.size()));
     mObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(
-        md3dDevice.Get(), 1, true);
-
-    UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-
-    D3D12_GPU_VIRTUAL_ADDRESS cbAddress =
-        mObjectCB->Resource()->GetGPUVirtualAddress();
-
-    D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
-    cbvDesc.BufferLocation = cbAddress;
-    cbvDesc.SizeInBytes = objCBByteSize;
-
-    md3dDevice->CreateConstantBufferView(
-        &cbvDesc,
-        mCbvHeap->GetCPUDescriptorHandleForHeapStart());
+        md3dDevice.Get(), objectCount, true);
 }
 
 void BoxApp::BuildBoxGeometry()
@@ -668,6 +669,25 @@ void BoxApp::BuildBoxGeometry()
         }
     }
 
+    if (vertices.empty())
+        throw std::runtime_error("house: vertex buffer is empty.");
+
+    XMFLOAT3 minP = vertices[0].Pos;
+    XMFLOAT3 maxP = vertices[0].Pos;
+    for (const auto& v : vertices)
+    {
+        minP.x = (std::min)(minP.x, v.Pos.x);
+        minP.y = (std::min)(minP.y, v.Pos.y);
+        minP.z = (std::min)(minP.z, v.Pos.z);
+        maxP.x = (std::max)(maxP.x, v.Pos.x);
+        maxP.y = (std::max)(maxP.y, v.Pos.y);
+        maxP.z = (std::max)(maxP.z, v.Pos.z);
+    }
+    BoundingBox::CreateFromPoints(
+        mLocalBounds,
+        XMLoadFloat3(&minP),
+        XMLoadFloat3(&maxP));
+
     const UINT vbByteSize =
         static_cast<UINT>(vertices.size() * sizeof(Vertex));
 
@@ -728,6 +748,91 @@ void BoxApp::BuildBoxGeometry()
 
         mBoxGeo->DrawArgs["material_" + std::to_string(materialId)] = submesh;
         startIndex += submesh.IndexCount;
+    }
+}
+
+void BoxApp::BuildSceneObjects()
+{
+    constexpr int GridSize = 20;
+    constexpr float Spacing = 5.0f;
+    constexpr float ObjectScale = 0.20f;
+
+    mSceneObjects.clear();
+    mSceneObjects.reserve(GridSize * GridSize);
+
+    const float halfGrid = (GridSize - 1) * Spacing * 0.5f;
+
+    for (int z = 0; z < GridSize; ++z)
+    {
+        for (int x = 0; x < GridSize; ++x)
+        {
+            const float worldX = x * Spacing - halfGrid;
+            const float worldZ = z * Spacing - halfGrid;
+            const float angle = ((x * 17 + z * 31) % 360) * (XM_PI / 180.0f);
+
+            XMMATRIX world =
+                XMMatrixScaling(ObjectScale, ObjectScale, ObjectScale) *
+                XMMatrixRotationY(angle) *
+                XMMatrixTranslation(worldX, 0.0f, worldZ);
+
+            SceneObject object;
+            XMStoreFloat4x4(&object.World, world);
+            mLocalBounds.Transform(object.Bounds, world);
+            mSceneObjects.push_back(object);
+        }
+    }
+
+    mOctree.Build(mSceneObjects, 7, 16);
+    mVisibleObjects.resize(mSceneObjects.size());
+    std::iota(mVisibleObjects.begin(), mVisibleObjects.end(), 0);
+}
+
+void BoxApp::UpdateCullingInput()
+{
+    const bool cDown = (GetAsyncKeyState('C') & 0x8000) != 0;
+    const bool oDown = (GetAsyncKeyState('O') & 0x8000) != 0;
+
+    if (cDown && !mPrevCKeyDown)
+        mFrustumCullingEnabled = !mFrustumCullingEnabled;
+
+    if (oDown && !mPrevOKeyDown)
+        mOctreeEnabled = !mOctreeEnabled;
+
+    mPrevCKeyDown = cDown;
+    mPrevOKeyDown = oDown;
+}
+
+void BoxApp::UpdateVisibility()
+{
+    if (!mFrustumCullingEnabled)
+    {
+        mVisibleObjects.resize(mSceneObjects.size());
+        std::iota(mVisibleObjects.begin(), mVisibleObjects.end(), 0);
+        return;
+    }
+
+    const XMMATRIX proj = XMLoadFloat4x4(&mProj);
+    const XMMATRIX view = XMLoadFloat4x4(&mView);
+
+    BoundingFrustum viewFrustum;
+    BoundingFrustum::CreateFromMatrix(viewFrustum, proj);
+
+    BoundingFrustum worldFrustum;
+    const XMMATRIX invView = XMMatrixInverse(nullptr, view);
+    viewFrustum.Transform(worldFrustum, invView);
+
+    if (mOctreeEnabled)
+    {
+        mOctree.Query(worldFrustum, mVisibleObjects);
+        return;
+    }
+
+    mVisibleObjects.clear();
+    mVisibleObjects.reserve(mSceneObjects.size());
+    for (size_t i = 0; i < mSceneObjects.size(); ++i)
+    {
+        if (worldFrustum.Contains(mSceneObjects[i].Bounds) != DISJOINT)
+            mVisibleObjects.push_back(static_cast<int>(i));
     }
 }
 

@@ -98,9 +98,7 @@ void RenderingSystem::BuildGeometryRootSignature(ID3D12Device* device)
 {
     CD3DX12_ROOT_PARAMETER slotRootParameter[5];
 
-    CD3DX12_DESCRIPTOR_RANGE cbvTable;
-    cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
-    slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable);
+    slotRootParameter[0].InitAsConstantBufferView(0);
 
     CD3DX12_DESCRIPTOR_RANGE diffuseTable;
     diffuseTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);

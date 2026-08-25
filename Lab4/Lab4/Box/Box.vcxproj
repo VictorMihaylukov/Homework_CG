@@ -162,6 +162,7 @@
     <ClInclude Include="..\..\Common\UploadBuffer.h" />
     <ClInclude Include="Gbuffer.h" />
     <ClInclude Include="RenderingSystem.h" />
+    <ClInclude Include="SpatialCulling.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Assets\shaders\color.hlsl">
