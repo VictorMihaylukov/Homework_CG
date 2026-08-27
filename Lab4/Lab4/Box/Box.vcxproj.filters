@@ -79,5 +79,8 @@
     <None Include="..\..\Assets\shaders\deferred_light.hlsl">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="..\..\Assets\shaders\shadow.hlsl">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

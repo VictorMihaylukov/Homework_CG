@@ -8,7 +8,7 @@ struct Light
     float FalloffEnd;
     float3 Position;
     float SpotPower;
-    int Type; // 0 = directional, 1 = point, 2 = spot
+    int Type;
     float3 Pad;
 };
 
@@ -19,13 +19,18 @@ cbuffer cbPass : register(b0)
     float3 gAmbientLight;
     float gPad0;
     Light gLights[MaxLights];
+    float4x4 gView;
+    float4x4 gShadowTransform[4];
+    float4 gCascadeSplits;
 };
 
 Texture2D gPositionMap : register(t0);
 Texture2D gNormalMap   : register(t1);
 Texture2D gAlbedoMap   : register(t2);
+Texture2DArray<float> gShadowMap : register(t3);
 
 SamplerState gSamPoint : register(s0);
+SamplerComparisonState gSamShadow : register(s1);
 
 struct VertexOut
 {
@@ -108,6 +113,21 @@ float3 ComputeSpotLight(Light L, float3 pos, float3 normal, float3 toEye, float3
     return BlinnPhong(lightStrength, lightVec, normal, toEye, albedo);
 }
 
+
+float CalcShadow(float3 posW, int cascade)
+{
+    float4 p = mul(float4(posW,1.0f), gShadowTransform[cascade]);
+    p.xyz /= p.w;
+    float2 uv = float2(p.x * 0.5f + 0.5f, -p.y * 0.5f + 0.5f);
+    if(p.z <= 0.0f || p.z >= 1.0f || any(uv < 0.0f) || any(uv > 1.0f)) return 1.0f;
+    uint w,h,layers; gShadowMap.GetDimensions(w,h,layers);
+    float2 texel = 1.0f / float2(w,h);
+    float visibility=0.0f;
+    [unroll] for(int y=-1;y<=1;++y) [unroll] for(int x=-1;x<=1;++x)
+        visibility += gShadowMap.SampleCmpLevelZero(gSamShadow,float3(uv+float2(x,y)*texel,cascade),p.z-0.0008f);
+    return visibility/9.0f;
+}
+
 VertexOut VS(uint vid : SV_VertexID)
 {
     VertexOut vout;
@@ -125,8 +145,7 @@ float4 PS(VertexOut pin) : SV_Target
     float4 positionSample = gPositionMap.Sample(gSamPoint, pin.TexC);
     float3 normal = normalize(gNormalMap.Sample(gSamPoint, pin.TexC).xyz);
     float3 albedo = gAlbedoMap.Sample(gSamPoint, pin.TexC).rgb;
-
-    // Пиксели, не записанные geometry pass (фон)
+    
     if (positionSample.a < 0.5f)
         return float4(0.02f, 0.02f, 0.03f, 1.0f);
 
@@ -144,7 +163,14 @@ float4 PS(VertexOut pin) : SV_Target
         Light L = gLights[i];
 
         if (L.Type == 0)
-            color += ComputeDirectionalLight(L, normal, toEyeW, albedo);
+        {
+            float depthV = mul(float4(posW,1.0f), gView).z;
+            int cascade = depthV > gCascadeSplits.x ? 1 : 0;
+            cascade = depthV > gCascadeSplits.y ? 2 : cascade;
+            cascade = depthV > gCascadeSplits.z ? 3 : cascade;
+            float visibility = CalcShadow(posW, cascade);
+            color += visibility * ComputeDirectionalLight(L, normal, toEyeW, albedo);
+        }
         else if (L.Type == 1)
             color += ComputePointLight(L, posW, normal, toEyeW, albedo);
         else if (L.Type == 2)

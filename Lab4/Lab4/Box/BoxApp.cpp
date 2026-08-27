@@ -12,6 +12,8 @@
 #include <stdexcept>
 #include <numeric>
 #include <sstream>
+#include <cfloat>
+#include <cmath>
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -69,6 +71,7 @@ private:
     void BuildSceneObjects();
     void UpdateVisibility();
     void UpdateCullingInput();
+    void UpdateCascades();
 
 private:
     std::unique_ptr<RenderingSystem> mRenderingSystem;
@@ -107,6 +110,8 @@ private:
     std::vector<DeferredLight> mLights;
     XMFLOAT3 mAmbientLight = { 0.06f, 0.06f, 0.08f };
     XMFLOAT3 mEyePos = { 0.0f, 0.0f, 0.0f };
+    XMFLOAT4X4 mShadowTransforms[CascadeCount] = {};
+    float mCascadeSplits[CascadeCount] = {};
 
     POINT mLastMousePos;
 };
@@ -136,7 +141,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 BoxApp::BoxApp(HINSTANCE hInstance)
     : D3DApp(hInstance)
 {
-    mMainWndCaption = L"HW4 - Frustum Culling + Octree";
+    mMainWndCaption = L"HW5";
 }
 
 BoxApp::~BoxApp()
@@ -238,14 +243,13 @@ void BoxApp::Update(const GameTimer& gt)
 
     UpdateVisibility();
 
-    mRenderingSystem->UpdateLights(
-        mEyePos,
-        mAmbientLight,
-        mLights.data(),
-        static_cast<int>(mLights.size()));
+    UpdateCascades();
+    XMFLOAT4X4 viewT; XMStoreFloat4x4(&viewT, XMMatrixTranspose(view));
+    mRenderingSystem->UpdateLights(mEyePos, mAmbientLight, mLights.data(),
+        static_cast<int>(mLights.size()), viewT, mShadowTransforms, mCascadeSplits);
 
     std::wostringstream caption;
-    caption << L"HW4 | objects: " << mSceneObjects.size()
+    caption << L"HW5 | objects: " << mSceneObjects.size()
             << L" | visible: " << mVisibleObjects.size()
             << L" | C: frustum " << (mFrustumCullingEnabled ? L"ON" : L"OFF")
             << L" | O: octree " << (mOctreeEnabled ? L"ON" : L"OFF");
@@ -256,6 +260,29 @@ void BoxApp::Draw(const GameTimer& gt)
 {
     ThrowIfFailed(mDirectCmdListAlloc->Reset());
     ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
+
+    auto shadowVBV = mBoxGeo->VertexBufferView(); auto shadowIBV = mBoxGeo->IndexBufferView();
+    mRenderingSystem->BeginShadowPass(mCommandList.Get());
+    mCommandList->IASetVertexBuffers(0,1,&shadowVBV); mCommandList->IASetIndexBuffer(&shadowIBV);
+    mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    for(int cascade=0; cascade<CascadeCount; ++cascade)
+    {
+        mRenderingSystem->BeginShadowCascade(mCommandList.Get(),cascade);
+        XMMATRIX lightVP = XMMatrixTranspose(XMLoadFloat4x4(&mShadowTransforms[cascade]));
+        for(size_t oi=0; oi<mSceneObjects.size(); ++oi)
+        {
+            XMMATRIX world=XMLoadFloat4x4(&mSceneObjects[oi].World); XMFLOAT4X4 wlp;
+            XMStoreFloat4x4(&wlp,XMMatrixTranspose(world*lightVP));
+            mRenderingSystem->SetShadowWorldLightMatrix(mCommandList.Get(),wlp);
+            for(size_t materialId=0; materialId<mMaterials.size(); ++materialId)
+            {
+                auto it=mBoxGeo->DrawArgs.find("material_"+std::to_string(materialId));
+                if(it!=mBoxGeo->DrawArgs.end() && it->second.IndexCount)
+                    mCommandList->DrawIndexedInstanced(it->second.IndexCount,1,it->second.StartIndexLocation,it->second.BaseVertexLocation,0);
+            }
+        }
+    }
+    mRenderingSystem->EndShadowPass(mCommandList.Get());
 
     mCommandList->RSSetViewports(1, &mScreenViewport);
     mCommandList->RSSetScissorRects(1, &mScissorRect);
@@ -833,6 +860,29 @@ void BoxApp::UpdateVisibility()
     {
         if (worldFrustum.Contains(mSceneObjects[i].Bounds) != DISJOINT)
             mVisibleObjects.push_back(static_cast<int>(i));
+    }
+}
+
+void BoxApp::UpdateCascades()
+{
+    const float nearZ=0.1f, farZ=180.0f, lambda=0.75f;
+    float prev=nearZ;
+    for(int i=0;i<CascadeCount;++i){ float p=float(i+1)/CascadeCount; float logZ=nearZ*powf(farZ/nearZ,p); float linZ=nearZ+(farZ-nearZ)*p; mCascadeSplits[i]=lambda*logZ+(1-lambda)*linZ; }
+    XMVECTOR eye=XMLoadFloat3(&mEyePos), target=XMVectorSet(0,2,0,1);
+    XMVECTOR forward=XMVector3Normalize(target-eye), right=XMVector3Normalize(XMVector3Cross(XMVectorSet(0,1,0,0),forward));
+    XMVECTOR up=XMVector3Normalize(XMVector3Cross(forward,right));
+    const float tanHalf=tanf(0.125f*MathHelper::Pi), aspect=AspectRatio();
+    XMVECTOR lightDir=XMVector3Normalize(XMLoadFloat3(&mLights[0].Direction));
+    for(int c=0;c<CascadeCount;++c){
+        float n=prev, f=mCascadeSplits[c]; prev=f; XMVECTOR corners[8]; int k=0;
+        for(int plane=0;plane<2;++plane){ float d=plane?f:n; float hh=d*tanHalf, hw=hh*aspect; XMVECTOR center=eye+forward*d;
+            for(int sy=-1;sy<=1;sy+=2) for(int sx=-1;sx<=1;sx+=2) corners[k++]=center+right*(hw*(float)sx)+up*(hh*(float)sy); }
+        XMVECTOR center=XMVectorZero(); for(auto& q:corners) center+=q; center/=8.0f;
+        XMVECTOR lightPos=center-lightDir*120.0f; XMMATRIX lv=XMMatrixLookAtLH(lightPos,center,XMVectorSet(0,1,0,0));
+        XMFLOAT3 mn(FLT_MAX,FLT_MAX,FLT_MAX),mx(-FLT_MAX,-FLT_MAX,-FLT_MAX);
+        for(auto& q:corners){ XMFLOAT3 a; XMStoreFloat3(&a,XMVector3TransformCoord(q,lv)); mn.x=(std::min)(mn.x,a.x);mn.y=(std::min)(mn.y,a.y);mn.z=(std::min)(mn.z,a.z);mx.x=(std::max)(mx.x,a.x);mx.y=(std::max)(mx.y,a.y);mx.z=(std::max)(mx.z,a.z); }
+        mn.z-=80.0f; mx.z+=80.0f; XMMATRIX lp=XMMatrixOrthographicOffCenterLH(mn.x,mx.x,mn.y,mx.y,mn.z,mx.z);
+        XMStoreFloat4x4(&mShadowTransforms[c],XMMatrixTranspose(lv*lp));
     }
 }
 
