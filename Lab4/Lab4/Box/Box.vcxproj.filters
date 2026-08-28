@@ -39,6 +39,9 @@
     <ClCompile Include="RenderingSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ParticleSystem.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Common\d3dApp.h">
@@ -68,6 +71,12 @@
     <ClInclude Include="SpatialCulling.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ParticleSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HeaderList.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Assets\shaders\color.hlsl">
@@ -80,6 +89,12 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="..\..\Assets\shaders\shadow.hlsl">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\..\Assets\shaders\particles_compute.hlsl">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\..\Assets\shaders\particles_render.hlsl">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

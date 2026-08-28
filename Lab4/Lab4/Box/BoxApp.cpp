@@ -1,9 +1,4 @@
-#include "../../Common/d3dApp.h"
-#include "../../Common/MathHelper.h"
-#include "../../Common/UploadBuffer.h"
-#include "../../Common/DDSTextureLoader.h"
-#include "RenderingSystem.h"
-#include "SpatialCulling.h"
+#include "HeaderList.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
@@ -75,6 +70,7 @@ private:
 
 private:
     std::unique_ptr<RenderingSystem> mRenderingSystem;
+    std::unique_ptr<ParticleSystem> mParticleSystem;
 
     ComPtr<ID3D12DescriptorHeap> mCbvHeap = nullptr;
 
@@ -141,7 +137,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 BoxApp::BoxApp(HINSTANCE hInstance)
     : D3DApp(hInstance)
 {
-    mMainWndCaption = L"HW5";
+    mMainWndCaption = L"HW6";
 }
 
 BoxApp::~BoxApp()
@@ -161,6 +157,10 @@ bool BoxApp::Initialize()
         mBackBufferFormat,
         mClientWidth,
         mClientHeight);
+
+    mParticleSystem = std::make_unique<ParticleSystem>();
+    mParticleSystem->Initialize(md3dDevice.Get(), mCommandList.Get(),
+        mBackBufferFormat, Gbuffer::DepthFormat);
 
     BuildDescriptorHeaps();
     LoadTexture();
@@ -249,7 +249,8 @@ void BoxApp::Update(const GameTimer& gt)
         static_cast<int>(mLights.size()), viewT, mShadowTransforms, mCascadeSplits);
 
     std::wostringstream caption;
-    caption << L"HW5 | objects: " << mSceneObjects.size()
+    caption << L"HW6 | particles: " << ParticleSystem::MaxParticles
+            << L" | objects: " << mSceneObjects.size()
             << L" | visible: " << mVisibleObjects.size()
             << L" | C: frustum " << (mFrustumCullingEnabled ? L"ON" : L"OFF")
             << L" | O: octree " << (mOctreeEnabled ? L"ON" : L"OFF");
@@ -392,6 +393,12 @@ void BoxApp::Draw(const GameTimer& gt)
     mRenderingSystem->ExecuteLightingPass(
         mCommandList.Get(),
         CurrentBackBufferView());
+
+    mParticleSystem->Update(mCommandList.Get(), gt.DeltaTime(), gt.TotalTime());
+    mCommandList->RSSetViewports(1, &mScreenViewport);
+    mCommandList->RSSetScissorRects(1, &mScissorRect);
+    mParticleSystem->Render(mCommandList.Get(), mView, mProj,
+        CurrentBackBufferView(), mRenderingSystem->GetGBuffer().DepthDSV());
 
     auto barrierToPresent = CD3DX12_RESOURCE_BARRIER::Transition(
         CurrentBackBuffer(),
@@ -780,7 +787,7 @@ void BoxApp::BuildBoxGeometry()
 
 void BoxApp::BuildSceneObjects()
 {
-    constexpr int GridSize = 20;
+    constexpr int GridSize = 1;
     constexpr float Spacing = 5.0f;
     constexpr float ObjectScale = 0.20f;
 

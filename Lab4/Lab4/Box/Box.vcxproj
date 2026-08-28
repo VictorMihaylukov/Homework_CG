@@ -152,6 +152,7 @@
     <ClCompile Include="BoxApp.cpp" />
     <ClCompile Include="Gbuffer.cpp" />
     <ClCompile Include="RenderingSystem.cpp" />
+    <ClCompile Include="ParticleSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Common\d3dApp.h" />
@@ -161,8 +162,10 @@
     <ClInclude Include="..\..\Common\MathHelper.h" />
     <ClInclude Include="..\..\Common\UploadBuffer.h" />
     <ClInclude Include="Gbuffer.h" />
+    <ClInclude Include="HeaderList.h" />
     <ClInclude Include="RenderingSystem.h" />
     <ClInclude Include="SpatialCulling.h" />
+    <ClInclude Include="ParticleSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Assets\shaders\color.hlsl">
@@ -175,6 +178,12 @@
       <FileType>Document</FileType>
     </None>
     <None Include="..\..\Assets\shaders\shadow.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="..\..\Assets\shaders\particles_compute.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="..\..\Assets\shaders\particles_render.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
