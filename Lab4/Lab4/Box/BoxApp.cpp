@@ -89,6 +89,10 @@ private:
     bool mOctreeEnabled = true;
     bool mPrevCKeyDown = false;
     bool mPrevOKeyDown = false;
+    bool mGrayscaleEnabled = true;
+    bool mVignetteEnabled = true;
+    bool mPrev1KeyDown = false;
+    bool mPrev2KeyDown = false;
 
     std::vector<std::unique_ptr<Material>> mMaterials;
 
@@ -137,7 +141,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 BoxApp::BoxApp(HINSTANCE hInstance)
     : D3DApp(hInstance)
 {
-    mMainWndCaption = L"HW6";
+    mMainWndCaption = L"HW 7";
 }
 
 BoxApp::~BoxApp()
@@ -245,15 +249,18 @@ void BoxApp::Update(const GameTimer& gt)
 
     UpdateCascades();
     XMFLOAT4X4 viewT; XMStoreFloat4x4(&viewT, XMMatrixTranspose(view));
+    UINT postEffectFlags = (mGrayscaleEnabled ? 1u : 0u) | (mVignetteEnabled ? 2u : 0u);
     mRenderingSystem->UpdateLights(mEyePos, mAmbientLight, mLights.data(),
-        static_cast<int>(mLights.size()), viewT, mShadowTransforms, mCascadeSplits);
+        static_cast<int>(mLights.size()), viewT, mShadowTransforms, mCascadeSplits, postEffectFlags);
 
     std::wostringstream caption;
-    caption << L"HW6 | particles: " << ParticleSystem::MaxParticles
+    caption << L"HW 7 | particles: " << ParticleSystem::MaxParticles
             << L" | objects: " << mSceneObjects.size()
             << L" | visible: " << mVisibleObjects.size()
             << L" | C: frustum " << (mFrustumCullingEnabled ? L"ON" : L"OFF")
-            << L" | O: octree " << (mOctreeEnabled ? L"ON" : L"OFF");
+            << L" | O: octree " << (mOctreeEnabled ? L"ON" : L"OFF")
+            << L" | 1: grayscale " << (mGrayscaleEnabled ? L"ON" : L"OFF")
+            << L" | 2: vignette " << (mVignetteEnabled ? L"ON" : L"OFF");
     SetWindowText(mhMainWnd, caption.str().c_str());
 }
 
@@ -787,7 +794,7 @@ void BoxApp::BuildBoxGeometry()
 
 void BoxApp::BuildSceneObjects()
 {
-    constexpr int GridSize = 1;
+    constexpr int GridSize = 20;
     constexpr float Spacing = 5.0f;
     constexpr float ObjectScale = 0.20f;
 
@@ -825,6 +832,8 @@ void BoxApp::UpdateCullingInput()
 {
     const bool cDown = (GetAsyncKeyState('C') & 0x8000) != 0;
     const bool oDown = (GetAsyncKeyState('O') & 0x8000) != 0;
+    const bool oneDown = (GetAsyncKeyState('1') & 0x8000) != 0;
+    const bool twoDown = (GetAsyncKeyState('2') & 0x8000) != 0;
 
     if (cDown && !mPrevCKeyDown)
         mFrustumCullingEnabled = !mFrustumCullingEnabled;
@@ -832,8 +841,16 @@ void BoxApp::UpdateCullingInput()
     if (oDown && !mPrevOKeyDown)
         mOctreeEnabled = !mOctreeEnabled;
 
+    if (oneDown && !mPrev1KeyDown)
+        mGrayscaleEnabled = !mGrayscaleEnabled;
+
+    if (twoDown && !mPrev2KeyDown)
+        mVignetteEnabled = !mVignetteEnabled;
+
     mPrevCKeyDown = cDown;
     mPrevOKeyDown = oDown;
+    mPrev1KeyDown = oneDown;
+    mPrev2KeyDown = twoDown;
 }
 
 void BoxApp::UpdateVisibility()

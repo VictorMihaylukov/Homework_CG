@@ -22,6 +22,8 @@ cbuffer cbPass : register(b0)
     float4x4 gView;
     float4x4 gShadowTransform[4];
     float4 gCascadeSplits;
+    uint gPostEffectFlags;
+    float3 gPostPad;
 };
 
 Texture2D gPositionMap : register(t0);
@@ -132,12 +134,43 @@ VertexOut VS(uint vid : SV_VertexID)
 {
     VertexOut vout;
 
-    // Fullscreen triangle
-    float2 uv = float2((vid << 1) & 2, vid & 2);
-    vout.PosH = float4(uv * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), 0.0f, 1.0f);
-    vout.TexC = uv;
+    static const float2 positions[6] =
+    {
+        float2(-1.0f,  1.0f),
+        float2( 1.0f,  1.0f),
+        float2(-1.0f, -1.0f),
+        float2(-1.0f, -1.0f),
+        float2( 1.0f,  1.0f),
+        float2( 1.0f, -1.0f)
+    };
 
+    static const float2 texCoords[6] =
+    {
+        float2(0.0f, 0.0f),
+        float2(1.0f, 0.0f),
+        float2(0.0f, 1.0f),
+        float2(0.0f, 1.0f),
+        float2(1.0f, 0.0f),
+        float2(1.0f, 1.0f)
+    };
+
+    vout.PosH = float4(positions[vid], 0.0f, 1.0f);
+    vout.TexC = texCoords[vid];
     return vout;
+}
+
+float3 ApplyGrayscale(float3 color)
+{
+    float luminance = dot(color, float3(0.2126f, 0.7152f, 0.0722f));
+    return luminance.xxx;
+}
+
+float3 ApplyVignette(float3 color, float2 uv)
+{
+    float2 centered = uv * 2.0f - 1.0f;
+    float radius = length(centered);
+    float factor = 1.0f - smoothstep(0.45f, 1.35f, radius);
+    return color * lerp(0.35f, 1.0f, factor);
 }
 
 float4 PS(VertexOut pin) : SV_Target
@@ -176,6 +209,12 @@ float4 PS(VertexOut pin) : SV_Target
         else if (L.Type == 2)
             color += ComputeSpotLight(L, posW, normal, toEyeW, albedo);
     }
+
+    if ((gPostEffectFlags & 1u) != 0u)
+        color = ApplyGrayscale(color);
+
+    if ((gPostEffectFlags & 2u) != 0u)
+        color = ApplyVignette(color, pin.TexC);
 
     return float4(color, 1.0f);
 }
