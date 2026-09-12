@@ -19,6 +19,8 @@ cbuffer cbPass : register(b0)
     float3 gAmbientLight;
     float gPad0;
     Light gLights[MaxLights];
+    int gShowGBuffer;
+    float3 gDebugPadding;
 };
 
 Texture2D gPositionMap : register(t0);
@@ -125,8 +127,64 @@ float4 PS(VertexOut pin) : SV_Target
     float4 positionSample = gPositionMap.Sample(gSamPoint, pin.TexC);
     float3 normal = normalize(gNormalMap.Sample(gSamPoint, pin.TexC).xyz);
     float3 albedo = gAlbedoMap.Sample(gSamPoint, pin.TexC).rgb;
+    
+    if (gShowGBuffer != 0)
+    {
+        float2 uv = pin.TexC;
+        
+        if (uv.x < 0.6f && uv.y < 0.25f)
+        {
+        //position
+            if (uv.x < 0.2f)
+            {
+                float2 debugUV;
+                debugUV.x = uv.x / 0.2f;
+                debugUV.y = uv.y / 0.25f;
 
-    // Пиксели, не записанные geometry pass (фон)
+                float3 p =
+                gPositionMap.Sample(
+                    gSamPoint,
+                    debugUV).xyz;
+
+                p = p * 0.05f + 0.5f;
+
+                return float4(p, 1.0f);
+            }
+
+        // normal
+            else if (uv.x < 0.4f)
+            {
+                float2 debugUV;
+                debugUV.x = (uv.x - 0.2f) / 0.2f;
+                debugUV.y = uv.y / 0.25f;
+
+                float3 n =
+                gNormalMap.Sample(
+                    gSamPoint,
+                    debugUV).xyz;
+
+                n = n * 0.5f + 0.5f;
+
+                return float4(n, 1.0f);
+            }
+
+        // albedo
+            else
+            {
+                float2 debugUV;
+                debugUV.x = (uv.x - 0.4f) / 0.2f;
+                debugUV.y = uv.y / 0.25f;
+
+                float3 a =
+                gAlbedoMap.Sample(
+                    gSamPoint,
+                    debugUV).rgb;
+
+                return float4(a, 1.0f);
+            }
+        }
+    }
+
     if (positionSample.a < 0.5f)
         return float4(0.02f, 0.02f, 0.03f, 1.0f);
 

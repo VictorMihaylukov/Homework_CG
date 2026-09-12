@@ -75,6 +75,9 @@ private:
     float mPhi = 0.35f * XM_PI;
     float mRadius = 18.0f;
 
+    bool mShowGBuffer = false;
+    bool mGWasPressed = false;
+
     XMFLOAT2 mTexOffset = XMFLOAT2(0.0f, 0.0f);
     XMFLOAT2 mTexSpeed = XMFLOAT2(0.0f, 0.0f);
 
@@ -169,6 +172,15 @@ void BoxApp::OnResize()
 
 void BoxApp::Update(const GameTimer& gt)
 {
+    bool gPressed = (GetAsyncKeyState('G') & 0x8000) != 0;
+
+    if (gPressed && !mGWasPressed)
+    {
+        mShowGBuffer = !mShowGBuffer;
+    }
+
+    mGWasPressed = gPressed;
+
     float x = mRadius * sinf(mPhi) * cosf(mTheta);
     float z = mRadius * sinf(mPhi) * sinf(mTheta);
     float y = mRadius * cosf(mPhi);
@@ -202,7 +214,8 @@ void BoxApp::Update(const GameTimer& gt)
         mEyePos,
         mAmbientLight,
         mLights.data(),
-        static_cast<int>(mLights.size()));
+        static_cast<int>(mLights.size()),
+        mShowGBuffer);
 }
 
 void BoxApp::Draw(const GameTimer& gt)

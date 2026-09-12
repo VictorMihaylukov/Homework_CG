@@ -51,7 +51,8 @@ void RenderingSystem::UpdateLights(
     const XMFLOAT3& eyePosW,
     const XMFLOAT3& ambientLight,
     const DeferredLight* lights,
-    int numLights)
+    int numLights,
+    bool showGBuffer)
 {
     LightingPassConstants passConstants;
     passConstants.EyePosW = eyePosW;
@@ -60,6 +61,8 @@ void RenderingSystem::UpdateLights(
 
     for (int i = 0; i < passConstants.NumLights; ++i)
         passConstants.Lights[i] = lights[i];
+
+    passConstants.ShowGBuffer = showGBuffer ? 1 : 0;
 
     mLightingCB->CopyData(0, passConstants);
 }
