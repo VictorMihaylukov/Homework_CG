@@ -32,9 +32,35 @@ VertexOut VS(VertexIn vin)
     return vout;
 }
 
-float4 PS(VertexOut pin) : SV_TARGET
+float4 PS(VertexOut pin) : SV_Target
 {
-    float2 animatedUV = pin.TexC * gTexScale + gTexOffset;
+    float2 tiledUV = pin.TexC * gTexScale;
+    float2 localUV = frac(tiledUV);
+    
+    int2 tileId = (int2) floor(tiledUV);
+
+    int parity = (tileId.x + tileId.y) & 1;
+
+    float direction = (parity == 0) ? 1.0f : -1.0f;
+
+    float angle = gTexOffset.x * direction;
+
+    float c = cos(angle);
+    float s = sin(angle);
+
+    localUV -= float2(0.5f, 0.5f);
+
+    float2 rotatedUV;
+
+    rotatedUV.x =
+        localUV.x * c - localUV.y * s;
+
+    rotatedUV.y =
+        localUV.x * s + localUV.y * c;
+
+    rotatedUV += float2(0.5f, 0.5f);
+
+    float2 animatedUV = rotatedUV;
 
     return gTexture.Sample(gSampler, animatedUV);
 }
