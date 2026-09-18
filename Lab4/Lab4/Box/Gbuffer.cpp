@@ -28,7 +28,6 @@ void Gbuffer::Resize(
     mWidth = width;
     mHeight = height;
 
-    mPosition.Reset();
     mNormal.Reset();
     mAlbedo.Reset();
     mDepth.Reset();
@@ -39,7 +38,7 @@ void Gbuffer::Resize(
 
 void Gbuffer::BuildShaderResourceViews(
     ID3D12Device* device,
-    D3D12_CPU_DESCRIPTOR_HANDLE positionSrv,
+    D3D12_CPU_DESCRIPTOR_HANDLE depthSrv,
     D3D12_CPU_DESCRIPTOR_HANDLE normalSrv,
     D3D12_CPU_DESCRIPTOR_HANDLE albedoSrv)
 {
@@ -50,8 +49,8 @@ void Gbuffer::BuildShaderResourceViews(
     srvDesc.Texture2D.MipLevels = 1;
     srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
 
-    srvDesc.Format = PositionFormat;
-    device->CreateShaderResourceView(mPosition.Get(), &srvDesc, positionSrv);
+    srvDesc.Format = DepthSrvFormat;
+    device->CreateShaderResourceView(mDepth.Get(), &srvDesc, depthSrv);
 
     srvDesc.Format = NormalFormat;
     device->CreateShaderResourceView(mNormal.Get(), &srvDesc, normalSrv);
@@ -64,7 +63,6 @@ void Gbuffer::Clear(ID3D12GraphicsCommandList* cmdList)
 {
     const float clearColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
-    cmdList->ClearRenderTargetView(mPositionRTV, clearColor, 0, nullptr);
     cmdList->ClearRenderTargetView(mNormalRTV, clearColor, 0, nullptr);
     cmdList->ClearRenderTargetView(mAlbedoRTV, clearColor, 0, nullptr);
     cmdList->ClearDepthStencilView(
@@ -78,14 +76,13 @@ void Gbuffer::Clear(ID3D12GraphicsCommandList* cmdList)
 
 void Gbuffer::SetAsRenderTargets(ID3D12GraphicsCommandList* cmdList)
 {
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvs[3] =
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvs[2] =
     {
-        mPositionRTV,
         mNormalRTV,
         mAlbedoRTV
     };
 
-    cmdList->OMSetRenderTargets(3, rtvs, false, &mDepthDSV);
+    cmdList->OMSetRenderTargets(2, rtvs, false, &mDepthDSV);
 }
 
 void Gbuffer::TransitionToShaderResource(ID3D12GraphicsCommandList* cmdList)
@@ -93,8 +90,8 @@ void Gbuffer::TransitionToShaderResource(ID3D12GraphicsCommandList* cmdList)
     CD3DX12_RESOURCE_BARRIER barriers[3] =
     {
         CD3DX12_RESOURCE_BARRIER::Transition(
-            mPosition.Get(),
-            D3D12_RESOURCE_STATE_RENDER_TARGET,
+            mDepth.Get(),
+            D3D12_RESOURCE_STATE_DEPTH_WRITE,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE),
         CD3DX12_RESOURCE_BARRIER::Transition(
             mNormal.Get(),
@@ -114,9 +111,9 @@ void Gbuffer::TransitionToRenderTarget(ID3D12GraphicsCommandList* cmdList)
     CD3DX12_RESOURCE_BARRIER barriers[3] =
     {
         CD3DX12_RESOURCE_BARRIER::Transition(
-            mPosition.Get(),
+            mDepth.Get(),
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-            D3D12_RESOURCE_STATE_RENDER_TARGET),
+            D3D12_RESOURCE_STATE_DEPTH_WRITE),
         CD3DX12_RESOURCE_BARRIER::Transition(
             mNormal.Get(),
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
@@ -136,29 +133,6 @@ void Gbuffer::BuildResources(
     UINT height)
 {
     CD3DX12_HEAP_PROPERTIES heapProperties(D3D12_HEAP_TYPE_DEFAULT);
-
-    // position
-    auto positionDesc = CD3DX12_RESOURCE_DESC::Tex2D(
-        PositionFormat,
-        width,
-        height,
-        1, 1, 1, 0,
-        D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
-
-    D3D12_CLEAR_VALUE positionClear = {};
-    positionClear.Format = PositionFormat;
-    positionClear.Color[0] = 0.0f;
-    positionClear.Color[1] = 0.0f;
-    positionClear.Color[2] = 0.0f;
-    positionClear.Color[3] = 0.0f;
-
-    ThrowIfFailed(device->CreateCommittedResource(
-        &heapProperties,
-        D3D12_HEAP_FLAG_NONE,
-        &positionDesc,
-        D3D12_RESOURCE_STATE_RENDER_TARGET,
-        &positionClear,
-        IID_PPV_ARGS(&mPosition)));
 
     // normal
     auto normalDesc = CD3DX12_RESOURCE_DESC::Tex2D(
@@ -208,7 +182,7 @@ void Gbuffer::BuildResources(
 
     // depth
     auto depthDesc = CD3DX12_RESOURCE_DESC::Tex2D(
-        DepthFormat,
+        DepthResourceFormat,
         width,
         height,
         1, 1, 1, 0,
@@ -233,7 +207,7 @@ void Gbuffer::BuildDescriptors(ID3D12Device* device)
 
     // rtv
     D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-    rtvHeapDesc.NumDescriptors = 3;
+    rtvHeapDesc.NumDescriptors = 2;
     rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
     rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
@@ -244,15 +218,11 @@ void Gbuffer::BuildDescriptors(ID3D12Device* device)
     UINT rtvSize = device->GetDescriptorHandleIncrementSize(
         D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-    mPositionRTV = mRtvHeap->GetCPUDescriptorHandleForHeapStart();
-
-    mNormalRTV = mPositionRTV;
-    mNormalRTV.ptr += rtvSize;
+    mNormalRTV = mRtvHeap->GetCPUDescriptorHandleForHeapStart();
 
     mAlbedoRTV = mNormalRTV;
     mAlbedoRTV.ptr += rtvSize;
 
-    device->CreateRenderTargetView(mPosition.Get(), nullptr, mPositionRTV);
     device->CreateRenderTargetView(mNormal.Get(), nullptr, mNormalRTV);
     device->CreateRenderTargetView(mAlbedo.Get(), nullptr, mAlbedoRTV);
 
@@ -267,5 +237,8 @@ void Gbuffer::BuildDescriptors(ID3D12Device* device)
         IID_PPV_ARGS(&mDsvHeap)));
 
     mDepthDSV = mDsvHeap->GetCPUDescriptorHandleForHeapStart();
-    device->CreateDepthStencilView(mDepth.Get(), nullptr, mDepthDSV);
+    D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+    dsvDesc.Format = DepthFormat;
+    dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+    device->CreateDepthStencilView(mDepth.Get(), &dsvDesc, mDepthDSV);
 }

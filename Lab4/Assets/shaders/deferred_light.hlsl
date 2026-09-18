@@ -19,11 +19,12 @@ cbuffer cbPass : register(b0)
     float3 gAmbientLight;
     float gPad0;
     Light gLights[MaxLights];
+    float4x4 gInvViewProj;
     int gShowGBuffer;
     float3 gDebugPadding;
 };
 
-Texture2D gPositionMap : register(t0);
+Texture2D gDepthMap : register(t0);
 Texture2D gNormalMap   : register(t1);
 Texture2D gAlbedoMap   : register(t2);
 
@@ -124,7 +125,7 @@ VertexOut VS(uint vid : SV_VertexID)
 
 float4 PS(VertexOut pin) : SV_Target
 {
-    float4 positionSample = gPositionMap.Sample(gSamPoint, pin.TexC);
+    float depth = gDepthMap.Sample(gSamPoint, pin.TexC).r;
     float3 normal = normalize(gNormalMap.Sample(gSamPoint, pin.TexC).xyz);
     float3 albedo = gAlbedoMap.Sample(gSamPoint, pin.TexC).rgb;
     
@@ -134,21 +135,15 @@ float4 PS(VertexOut pin) : SV_Target
         
         if (uv.x < 0.6f && uv.y < 0.25f)
         {
-        //position
+        // depth
             if (uv.x < 0.2f)
             {
                 float2 debugUV;
                 debugUV.x = uv.x / 0.2f;
                 debugUV.y = uv.y / 0.25f;
 
-                float3 p =
-                gPositionMap.Sample(
-                    gSamPoint,
-                    debugUV).xyz;
-
-                p = p * 0.05f + 0.5f;
-
-                return float4(p, 1.0f);
+                float d = gDepthMap.Sample(gSamPoint, debugUV).r;
+                return float4(d, d, d, 1.0f);
             }
 
         // normal
@@ -185,10 +180,13 @@ float4 PS(VertexOut pin) : SV_Target
         }
     }
 
-    if (positionSample.a < 0.5f)
+    if (depth >= 1.0f)
         return float4(0.02f, 0.02f, 0.03f, 1.0f);
 
-    float3 posW = positionSample.xyz;
+    float4 posH = float4(pin.TexC.x * 2.0f - 1.0f,
+                            1.0f - pin.TexC.y * 2.0f, depth, 1.0f);
+    float4 reconstructed = mul(posH, gInvViewProj);
+    float3 posW = reconstructed.xyz / reconstructed.w;
     float3 toEyeW = normalize(gEyePosW - posW);
 
     float3 color = albedo * gAmbientLight;

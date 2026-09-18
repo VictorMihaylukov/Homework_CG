@@ -210,8 +210,13 @@ void BoxApp::Update(const GameTimer& gt)
 
     mObjectCB->CopyData(0, objConstants);
 
+    XMFLOAT4X4 invViewProj;
+    XMStoreFloat4x4(&invViewProj, XMMatrixTranspose(
+        XMMatrixInverse(nullptr, view * proj)));
+
     mRenderingSystem->UpdateLights(
         mEyePos,
+        invViewProj,
         mAmbientLight,
         mLights.data(),
         static_cast<int>(mLights.size()),

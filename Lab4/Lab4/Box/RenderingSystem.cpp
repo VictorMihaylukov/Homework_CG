@@ -49,6 +49,7 @@ void RenderingSystem::EndGeometryPass(ID3D12GraphicsCommandList* cmdList)
 
 void RenderingSystem::UpdateLights(
     const XMFLOAT3& eyePosW,
+    const XMFLOAT4X4& invViewProj,
     const XMFLOAT3& ambientLight,
     const DeferredLight* lights,
     int numLights,
@@ -56,6 +57,7 @@ void RenderingSystem::UpdateLights(
 {
     LightingPassConstants passConstants;
     passConstants.EyePosW = eyePosW;
+    passConstants.InvViewProj = invViewProj;
     passConstants.AmbientLight = ambientLight;
     passConstants.NumLights = MathHelper::Clamp(numLights, 0, MaxDeferredLights);
 
@@ -234,10 +236,9 @@ void RenderingSystem::BuildPSOs(
     geoPsoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     geoPsoDesc.SampleMask = UINT_MAX;
     geoPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    geoPsoDesc.NumRenderTargets = 3;
-    geoPsoDesc.RTVFormats[0] = Gbuffer::PositionFormat;
-    geoPsoDesc.RTVFormats[1] = Gbuffer::NormalFormat;
-    geoPsoDesc.RTVFormats[2] = Gbuffer::AlbedoFormat;
+    geoPsoDesc.NumRenderTargets = 2;
+    geoPsoDesc.RTVFormats[0] = Gbuffer::NormalFormat;
+    geoPsoDesc.RTVFormats[1] = Gbuffer::AlbedoFormat;
     geoPsoDesc.SampleDesc.Count = 1;
     geoPsoDesc.SampleDesc.Quality = 0;
     geoPsoDesc.DSVFormat = Gbuffer::DepthFormat;
@@ -282,7 +283,7 @@ void RenderingSystem::BuildLightingDescriptors(ID3D12Device* device)
         D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
     D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-    heapDesc.NumDescriptors = 4; // CBV + Position + Normal + Albedo
+    heapDesc.NumDescriptors = 4; // CBV + Depth + Normal + Albedo
     heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
@@ -300,12 +301,12 @@ void RenderingSystem::BuildLightingDescriptors(ID3D12Device* device)
         mLightingHeap->GetCPUDescriptorHandleForHeapStart());
 
     // [1..3] G-Buffer SRVs
-    CD3DX12_CPU_DESCRIPTOR_HANDLE positionSrv(
+    CD3DX12_CPU_DESCRIPTOR_HANDLE depthSrv(
         mLightingHeap->GetCPUDescriptorHandleForHeapStart(),
         1,
         mCbvSrvDescriptorSize);
 
-    CD3DX12_CPU_DESCRIPTOR_HANDLE normalSrv = positionSrv;
+    CD3DX12_CPU_DESCRIPTOR_HANDLE normalSrv = depthSrv;
     normalSrv.Offset(1, mCbvSrvDescriptorSize);
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE albedoSrv = normalSrv;
@@ -313,7 +314,7 @@ void RenderingSystem::BuildLightingDescriptors(ID3D12Device* device)
 
     mGBuffer.BuildShaderResourceViews(
         device,
-        positionSrv,
+        depthSrv,
         normalSrv,
         albedoSrv);
 }

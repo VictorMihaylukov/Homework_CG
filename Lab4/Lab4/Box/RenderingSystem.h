@@ -32,6 +32,7 @@ struct LightingPassConstants
     float Pad0 = 0.0f;
     DeferredLight Lights[MaxDeferredLights];
 
+    DirectX::XMFLOAT4X4 InvViewProj = MathHelper::Identity4x4();
     int ShowGBuffer = 0;
     DirectX::XMFLOAT3 DebugPadding = { 0.0f, 0.0f, 0.0f };
 };
@@ -71,6 +72,7 @@ public:
 
     void UpdateLights(
         const DirectX::XMFLOAT3& eyePos,
+        const DirectX::XMFLOAT4X4& invViewProj,
         const DirectX::XMFLOAT3& ambientLight,
         const DeferredLight* lights,
         int lightCount,
