@@ -23,7 +23,8 @@ cbuffer cbPass : register(b0)
     float4x4 gShadowTransform[4];
     float4 gCascadeSplits;
     uint gPostEffectFlags;
-    float3 gPostPad;
+    float gCameraSpeed;
+    float2 gPostPad;
 };
 
 Texture2D gPositionMap : register(t0);
@@ -173,41 +174,102 @@ float3 ApplyVignette(float3 color, float2 uv)
     return color * lerp(0.35f, 1.0f, factor);
 }
 
+
+float ComputeEdgeStrength(float2 uv)
+{
+    uint width, height;
+    gPositionMap.GetDimensions(width, height);
+    float2 texel = 1.0f / float2(width, height);
+
+    float4 centerPos = gPositionMap.SampleLevel(gSamPoint, uv, 0.0f);
+    float3 centerNormal = gNormalMap.SampleLevel(gSamPoint, uv, 0.0f).xyz;
+    bool centerValid = centerPos.a >= 0.5f;
+
+    static const float2 offsets[4] =
+    {
+        float2(-1.0f, 0.0f), float2(1.0f, 0.0f),
+        float2(0.0f, -1.0f), float2(0.0f, 1.0f)
+    };
+
+    float silhouetteEdge = 0.0f;
+    float normalEdge = 0.0f;
+    float depthEdge = 0.0f;
+
+    [unroll]
+    for (int i = 0; i < 4; ++i)
+    {
+        float2 sampleUv = saturate(uv + offsets[i] * texel);
+        float4 neighborPos = gPositionMap.SampleLevel(gSamPoint, sampleUv, 0.0f);
+        float3 neighborNormal = gNormalMap.SampleLevel(gSamPoint, sampleUv, 0.0f).xyz;
+        bool neighborValid = neighborPos.a >= 0.5f;
+
+        silhouetteEdge = max(silhouetteEdge, abs(centerPos.a - neighborPos.a));
+
+        if (centerValid && neighborValid)
+        {
+            float3 n0 = normalize(centerNormal);
+            float3 n1 = normalize(neighborNormal);
+            normalEdge = max(normalEdge, 1.0f - saturate(dot(n0, n1)));
+
+            float d0 = length(centerPos.xyz - gEyePosW);
+            float d1 = length(neighborPos.xyz - gEyePosW);
+            float relativeDepthJump = abs(d0 - d1) / max(d0 * 0.02f, 0.05f);
+            depthEdge = max(depthEdge, relativeDepthJump);
+        }
+    }
+
+    float geometricEdge = max(
+        smoothstep(0.08f, 0.35f, normalEdge),
+        smoothstep(0.35f, 1.25f, depthEdge));
+
+    return saturate(max(silhouetteEdge, geometricEdge));
+}
+
+float3 GetVelocityEdgeColor()
+{
+    // 0 units/s -> blue, 25+ units/s -> red.
+    float speed01 = saturate(gCameraSpeed / 25.0f);
+    return lerp(float3(0.05f, 0.25f, 1.0f),
+                float3(1.0f, 0.05f, 0.02f), speed01);
+}
+
 float4 PS(VertexOut pin) : SV_Target
 {
     float4 positionSample = gPositionMap.Sample(gSamPoint, pin.TexC);
-    float3 normal = normalize(gNormalMap.Sample(gSamPoint, pin.TexC).xyz);
-    float3 albedo = gAlbedoMap.Sample(gSamPoint, pin.TexC).rgb;
-    
-    if (positionSample.a < 0.5f)
-        return float4(0.02f, 0.02f, 0.03f, 1.0f);
+    const bool hasGeometry = positionSample.a >= 0.5f;
+    float3 color = float3(0.02f, 0.02f, 0.03f);
 
-    float3 posW = positionSample.xyz;
-    float3 toEyeW = normalize(gEyePosW - posW);
-
-    float3 color = albedo * gAmbientLight;
-
-    [unroll]
-    for (int i = 0; i < MaxLights; ++i)
+    if (hasGeometry)
     {
-        if (i >= gNumLights)
-            break;
+        float3 normal = normalize(gNormalMap.Sample(gSamPoint, pin.TexC).xyz);
+        float3 albedo = gAlbedoMap.Sample(gSamPoint, pin.TexC).rgb;
+        float3 posW = positionSample.xyz;
+        float3 toEyeW = normalize(gEyePosW - posW);
 
-        Light L = gLights[i];
+        color = albedo * gAmbientLight;
 
-        if (L.Type == 0)
+        [unroll]
+        for (int i = 0; i < MaxLights; ++i)
         {
-            float depthV = mul(float4(posW,1.0f), gView).z;
-            int cascade = depthV > gCascadeSplits.x ? 1 : 0;
-            cascade = depthV > gCascadeSplits.y ? 2 : cascade;
-            cascade = depthV > gCascadeSplits.z ? 3 : cascade;
-            float visibility = CalcShadow(posW, cascade);
-            color += visibility * ComputeDirectionalLight(L, normal, toEyeW, albedo);
+            if (i >= gNumLights)
+                break;
+
+            Light L = gLights[i];
+
+            if (L.Type == 0)
+            {
+                float depthV = mul(float4(posW,1.0f), gView).z;
+                int cascade = depthV > gCascadeSplits.x ? 1 : 0;
+                cascade = depthV > gCascadeSplits.y ? 2 : cascade;
+                cascade = depthV > gCascadeSplits.z ? 3 : cascade;
+                float visibility = CalcShadow(posW, cascade);
+                color += visibility * ComputeDirectionalLight(L, normal, toEyeW, albedo);
+            }
+            else if (L.Type == 1)
+                color += ComputePointLight(L, posW, normal, toEyeW, albedo);
+            else if (L.Type == 2)
+                color += ComputeSpotLight(L, posW, normal, toEyeW, albedo);
         }
-        else if (L.Type == 1)
-            color += ComputePointLight(L, posW, normal, toEyeW, albedo);
-        else if (L.Type == 2)
-            color += ComputeSpotLight(L, posW, normal, toEyeW, albedo);
     }
 
     if ((gPostEffectFlags & 1u) != 0u)
@@ -215,6 +277,13 @@ float4 PS(VertexOut pin) : SV_Target
 
     if ((gPostEffectFlags & 2u) != 0u)
         color = ApplyVignette(color, pin.TexC);
+
+    // Apply this last so the blue/red edge colour is not destroyed by grayscale.
+    if ((gPostEffectFlags & 4u) != 0u)
+    {
+        float edge = ComputeEdgeStrength(pin.TexC);
+        color = lerp(color, GetVelocityEdgeColor(), edge);
+    }
 
     return float4(color, 1.0f);
 }

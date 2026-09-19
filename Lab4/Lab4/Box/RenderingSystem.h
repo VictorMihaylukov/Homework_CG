@@ -22,8 +22,9 @@ struct LightingPassConstants {
     DirectX::XMFLOAT4X4 View = MathHelper::Identity4x4();
     DirectX::XMFLOAT4X4 ShadowTransform[CascadeCount];
     DirectX::XMFLOAT4 CascadeSplits={10,30,100,300};
-    UINT PostEffectFlags = 3;
-    DirectX::XMFLOAT3 PostPad = {0,0,0};
+    UINT PostEffectFlags = 7;
+    float CameraSpeed = 0.0f;
+    DirectX::XMFLOAT2 PostPad = {0,0};
 };
 
 class RenderingSystem {
@@ -39,7 +40,8 @@ public:
     void SetShadowWorldLightMatrix(ID3D12GraphicsCommandList*,const DirectX::XMFLOAT4X4&);
     void EndShadowPass(ID3D12GraphicsCommandList*);
     void UpdateLights(const DirectX::XMFLOAT3&,const DirectX::XMFLOAT3&,const DeferredLight*,int,
-        const DirectX::XMFLOAT4X4&,const DirectX::XMFLOAT4X4*,const float*,UINT postEffectFlags);
+        const DirectX::XMFLOAT4X4&,const DirectX::XMFLOAT4X4*,const float*,UINT postEffectFlags,
+        float cameraSpeed);
     void ExecuteLightingPass(ID3D12GraphicsCommandList*,D3D12_CPU_DESCRIPTOR_HANDLE);
 private:
     void BuildGeometryRootSignature(ID3D12Device*); void BuildLightingRootSignature(ID3D12Device*); void BuildShadowRootSignature(ID3D12Device*);

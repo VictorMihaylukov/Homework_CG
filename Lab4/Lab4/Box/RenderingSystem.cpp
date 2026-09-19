@@ -52,7 +52,8 @@ void RenderingSystem::EndGeometryPass(ID3D12GraphicsCommandList* cmdList)
 void RenderingSystem::UpdateLights(
     const XMFLOAT3& eyePosW, const XMFLOAT3& ambientLight,
     const DeferredLight* lights, int numLights, const XMFLOAT4X4& view,
-    const XMFLOAT4X4* shadowTransforms, const float* cascadeSplits, UINT postEffectFlags)
+    const XMFLOAT4X4* shadowTransforms, const float* cascadeSplits, UINT postEffectFlags,
+    float cameraSpeed)
 {
     LightingPassConstants c; c.EyePosW=eyePosW; c.AmbientLight=ambientLight;
     c.NumLights=MathHelper::Clamp(numLights,0,MaxDeferredLights);
@@ -61,6 +62,7 @@ void RenderingSystem::UpdateLights(
     for(int i=0;i<CascadeCount;++i)c.ShadowTransform[i]=shadowTransforms[i];
     c.CascadeSplits=XMFLOAT4(cascadeSplits[0],cascadeSplits[1],cascadeSplits[2],cascadeSplits[3]);
     c.PostEffectFlags = postEffectFlags;
+    c.CameraSpeed = cameraSpeed;
     mLightingCB->CopyData(0,c);
 }
 
