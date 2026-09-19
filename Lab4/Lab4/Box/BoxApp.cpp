@@ -685,6 +685,13 @@ void BoxApp::BuildBoxGeometry()
                     vertex.Normal.x = attrib.normals[3 * idx.normal_index + 0];
                     vertex.Normal.y = attrib.normals[3 * idx.normal_index + 1];
                     vertex.Normal.z = attrib.normals[3 * idx.normal_index + 2];
+
+                    if (mMaterials[materialId]->Name == "Material.006")
+                    {
+                        vertex.Normal.x = -vertex.Normal.x;
+                        vertex.Normal.y = -vertex.Normal.y;
+                        vertex.Normal.z = -vertex.Normal.z;
+                    }
                 }
                 else
                 {
@@ -794,7 +801,7 @@ void BoxApp::BuildBoxGeometry()
 
 void BoxApp::BuildSceneObjects()
 {
-    constexpr int GridSize = 20;
+    constexpr int GridSize = 1;
     constexpr float Spacing = 5.0f;
     constexpr float ObjectScale = 0.20f;
 
