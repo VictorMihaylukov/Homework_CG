@@ -22,6 +22,8 @@ cbuffer cbPass : register(b0)
     float4x4 gView;
     float4x4 gShadowTransform[4];
     float4 gCascadeSplits;
+    float4x4 gSpotShadowTransform[2];
+    int4 gSpotShadowLightIndices;
 };
 
 Texture2D gPositionMap : register(t0);
@@ -114,18 +116,57 @@ float3 ComputeSpotLight(Light L, float3 pos, float3 normal, float3 toEye, float3
 }
 
 
-float CalcShadow(float3 posW, int cascade)
+float CalcShadow(float3 posW, float4x4 shadowTransform, int slice)
 {
-    float4 p = mul(float4(posW,1.0f), gShadowTransform[cascade]);
+    float4 p = mul(float4(posW, 1.0f), shadowTransform);
+
     p.xyz /= p.w;
+
     float2 uv = float2(p.x * 0.5f + 0.5f, -p.y * 0.5f + 0.5f);
-    if(p.z <= 0.0f || p.z >= 1.0f || any(uv < 0.0f) || any(uv > 1.0f)) return 1.0f;
-    uint w,h,layers; gShadowMap.GetDimensions(w,h,layers);
-    float2 texel = 1.0f / float2(w,h);
-    float visibility=0.0f;
-    [unroll] for(int y=-1;y<=1;++y) [unroll] for(int x=-1;x<=1;++x)
-        visibility += gShadowMap.SampleCmpLevelZero(gSamShadow,float3(uv+float2(x,y)*texel,cascade),p.z-0.0008f);
-    return visibility/9.0f;
+    
+    if (p.z <= 0.0f || p.z >= 1.0f || any(uv < 0.0f) || any(uv > 1.0f))
+    {
+        return 1.0f;
+    }
+
+    uint w, h, layers;
+
+    gShadowMap.GetDimensions(w, h, layers);
+
+    float2 texel = 1.0f / float2(w, h);
+
+    float visibility = 0.0f;
+    
+    [unroll]
+    for (int y = -1; y <= 1; ++y)
+    {
+        [unroll]
+        for (int x = -1; x <= 1; ++x)
+        {
+            visibility += gShadowMap.SampleCmpLevelZero( gSamShadow, float3(uv + float2(x, y) * texel, slice), p.z - 0.0008f);
+        }
+    }
+
+    return visibility / 9.0f;
+}
+
+float CalcDirectionalShadow(float3 posW, int cascade)
+{
+    return CalcShadow(posW, gShadowTransform[cascade], cascade);
+}
+
+float CalcSpotShadow(float3 posW, int lightIndex)
+{
+    [unroll]
+    for (int s = 0; s < 2; ++s)
+    {
+        if (gSpotShadowLightIndices[s] == lightIndex)
+        {
+            return CalcShadow(posW, gSpotShadowTransform[s], 4 + s);
+        }
+    }
+
+    return 1.0f;
 }
 
 VertexOut VS(uint vid : SV_VertexID)
@@ -164,17 +205,23 @@ float4 PS(VertexOut pin) : SV_Target
 
         if (L.Type == 0)
         {
-            float depthV = mul(float4(posW,1.0f), gView).z;
+            float depthV = mul(float4(posW, 1.0f), gView).z;
+
             int cascade = depthV > gCascadeSplits.x ? 1 : 0;
             cascade = depthV > gCascadeSplits.y ? 2 : cascade;
             cascade = depthV > gCascadeSplits.z ? 3 : cascade;
-            float visibility = CalcShadow(posW, cascade);
-            color += visibility * ComputeDirectionalLight(L, normal, toEyeW, albedo);
+
+            float visibility = CalcDirectionalShadow(posW, cascade);
+            color += visibility * ComputeDirectionalLight( L, normal, toEyeW, albedo);
         }
         else if (L.Type == 1)
             color += ComputePointLight(L, posW, normal, toEyeW, albedo);
         else if (L.Type == 2)
-            color += ComputeSpotLight(L, posW, normal, toEyeW, albedo);
+        {
+            float visibility = CalcSpotShadow(posW, i);
+
+            color += visibility * ComputeSpotLight(L, posW, normal, toEyeW, albedo);
+        }
     }
 
     return float4(color, 1.0f);

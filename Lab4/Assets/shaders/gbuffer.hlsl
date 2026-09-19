@@ -125,7 +125,7 @@ PixelOut PS(DomainOut pin)
     PixelOut pout;
     float3 N = normalize(pin.NormalW);
 
-    if (gHasNormalMap != 0)
+    if (false && gHasNormalMap != 0)
     {
         float3 dp1 = ddx(pin.PosW);
         float3 dp2 = ddy(pin.PosW);

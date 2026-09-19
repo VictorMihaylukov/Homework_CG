@@ -72,6 +72,7 @@ private:
     void UpdateVisibility();
     void UpdateCullingInput();
     void UpdateCascades();
+    void UpdateSpotShadows();
 
 private:
     std::unique_ptr<RenderingSystem> mRenderingSystem;
@@ -112,6 +113,10 @@ private:
     XMFLOAT3 mEyePos = { 0.0f, 0.0f, 0.0f };
     XMFLOAT4X4 mShadowTransforms[CascadeCount] = {};
     float mCascadeSplits[CascadeCount] = {};
+
+    XMFLOAT4X4 mSpotShadowTransforms[SpotShadowCount] = {};
+
+    int mSpotShadowLightIndices[SpotShadowCount] = {-1, -1};
 
     POINT mLastMousePos;
 };
@@ -244,9 +249,23 @@ void BoxApp::Update(const GameTimer& gt)
     UpdateVisibility();
 
     UpdateCascades();
-    XMFLOAT4X4 viewT; XMStoreFloat4x4(&viewT, XMMatrixTranspose(view));
-    mRenderingSystem->UpdateLights(mEyePos, mAmbientLight, mLights.data(),
-        static_cast<int>(mLights.size()), viewT, mShadowTransforms, mCascadeSplits);
+    UpdateSpotShadows();
+
+    XMFLOAT4X4 viewT;
+    XMStoreFloat4x4(
+        &viewT,
+        XMMatrixTranspose(view));
+    XMStoreFloat4x4(&viewT, XMMatrixTranspose(view));
+    mRenderingSystem->UpdateLights(
+        mEyePos,
+        mAmbientLight,
+        mLights.data(),
+        static_cast<int>(mLights.size()),
+        viewT,
+        mShadowTransforms,
+        mCascadeSplits,
+        mSpotShadowTransforms,
+        mSpotShadowLightIndices);
 
     std::wostringstream caption;
     caption << L"HW5 | objects: " << mSceneObjects.size()
@@ -265,6 +284,7 @@ void BoxApp::Draw(const GameTimer& gt)
     mRenderingSystem->BeginShadowPass(mCommandList.Get());
     mCommandList->IASetVertexBuffers(0,1,&shadowVBV); mCommandList->IASetIndexBuffer(&shadowIBV);
     mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
     for(int cascade=0; cascade<CascadeCount; ++cascade)
     {
         mRenderingSystem->BeginShadowCascade(mCommandList.Get(),cascade);
@@ -282,6 +302,44 @@ void BoxApp::Draw(const GameTimer& gt)
             }
         }
     }
+
+    for (int spot = 0; spot < SpotShadowCount; ++spot)
+    {
+        if (mSpotShadowLightIndices[spot] < 0)
+            continue;
+
+        mRenderingSystem->BeginShadowCascade(mCommandList.Get(), CascadeCount + spot);
+
+        XMMATRIX lightVP = XMMatrixTranspose(XMLoadFloat4x4(&mSpotShadowTransforms[spot]));
+
+        for (size_t oi = 0;
+            oi < mSceneObjects.size();
+            ++oi)
+        {
+            XMMATRIX world = XMLoadFloat4x4(&mSceneObjects[oi].World);
+
+            XMFLOAT4X4 wlp;
+
+            XMStoreFloat4x4(&wlp, XMMatrixTranspose(world * lightVP));
+
+            mRenderingSystem ->SetShadowWorldLightMatrix( mCommandList.Get(), wlp);
+
+            for (size_t materialId = 0;
+                materialId < mMaterials.size();
+                ++materialId)
+            {
+                auto it = mBoxGeo->DrawArgs.find(
+                        "material_" + std::to_string(materialId));
+
+                if (it != mBoxGeo->DrawArgs.end() && it->second.IndexCount)
+                {
+                    mCommandList->DrawIndexedInstanced(
+                        it->second.IndexCount, 1, it->second.StartIndexLocation, it->second.BaseVertexLocation, 0);
+                }
+            }
+        }
+    }
+
     mRenderingSystem->EndShadowPass(mCommandList.Get());
 
     mCommandList->RSSetViewports(1, &mScreenViewport);
@@ -671,6 +729,13 @@ void BoxApp::BuildBoxGeometry()
                     vertex.Normal.x = attrib.normals[3 * idx.normal_index + 0];
                     vertex.Normal.y = attrib.normals[3 * idx.normal_index + 1];
                     vertex.Normal.z = attrib.normals[3 * idx.normal_index + 2];
+
+                    if (mMaterials[materialId]->Name == "Material.006")
+                    {
+                        vertex.Normal.x = -vertex.Normal.x;
+                        vertex.Normal.y = -vertex.Normal.y;
+                        vertex.Normal.z = -vertex.Normal.z;
+                    }
                 }
                 else
                 {
@@ -780,7 +845,7 @@ void BoxApp::BuildBoxGeometry()
 
 void BoxApp::BuildSceneObjects()
 {
-    constexpr int GridSize = 20;
+    constexpr int GridSize = 1;
     constexpr float Spacing = 5.0f;
     constexpr float ObjectScale = 0.20f;
 
@@ -912,5 +977,69 @@ void BoxApp::BuildTextureSRV()
             texture.Get(),
             &srvDesc,
             hDescriptor);
+    }
+}
+
+void BoxApp::UpdateSpotShadows()
+{
+    for (int i = 0; i < SpotShadowCount; ++i)
+        mSpotShadowLightIndices[i] = -1;
+
+    int shadowIndex = 0;
+
+    for (
+        int lightIndex = 0;
+        lightIndex < static_cast<int>(mLights.size()) &&
+        shadowIndex < SpotShadowCount;
+        ++lightIndex)
+    {
+        const DeferredLight& L = mLights[lightIndex];
+
+        if (L.Type != static_cast<int>(LightType::Spot))
+            continue;
+
+        XMVECTOR pos =
+            XMLoadFloat3(&L.Position);
+
+        XMVECTOR dir =
+            XMVector3Normalize(
+                XMLoadFloat3(&L.Direction));
+
+        XMVECTOR up =
+            fabsf(XMVectorGetY(dir)) > 0.98f
+            ? XMVectorSet(0, 0, 1, 0)
+            : XMVectorSet(0, 1, 0, 0);
+
+        XMMATRIX view =
+            XMMatrixLookToLH(
+                pos,
+                dir,
+                up);
+
+        const float fovY =
+            XMConvertToRadians(70.0f);
+
+        const float nearZ = 0.1f;
+
+        const float farZ =
+            (std::max)(
+                L.FalloffEnd,
+                nearZ + 0.1f);
+
+        XMMATRIX proj =
+            XMMatrixPerspectiveFovLH(
+                fovY,
+                1.0f,
+                nearZ,
+                farZ);
+
+        XMStoreFloat4x4(
+            &mSpotShadowTransforms[shadowIndex],
+            XMMatrixTranspose(view * proj));
+
+        mSpotShadowLightIndices[shadowIndex] =
+            lightIndex;
+
+        ++shadowIndex;
     }
 }

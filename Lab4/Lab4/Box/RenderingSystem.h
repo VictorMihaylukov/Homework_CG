@@ -15,6 +15,9 @@ struct DeferredLight {
 #define MaxDeferredLights 16
 #define CascadeCount 4
 
+#define SpotShadowCount 2
+#define ShadowSliceCount (CascadeCount + SpotShadowCount)
+
 struct LightingPassConstants {
     DirectX::XMFLOAT3 EyePosW={0,0,0}; int NumLights=0;
     DirectX::XMFLOAT3 AmbientLight={0.08f,0.08f,0.10f}; float Pad0=0;
@@ -22,6 +25,9 @@ struct LightingPassConstants {
     DirectX::XMFLOAT4X4 View = MathHelper::Identity4x4();
     DirectX::XMFLOAT4X4 ShadowTransform[CascadeCount];
     DirectX::XMFLOAT4 CascadeSplits={10,30,100,300};
+
+    DirectX::XMFLOAT4X4 SpotShadowTransform[SpotShadowCount];
+    DirectX::XMINT4 SpotShadowLightIndices = { -1,-1,-1,-1 };
 };
 
 class RenderingSystem {
@@ -36,8 +42,18 @@ public:
     void BeginShadowCascade(ID3D12GraphicsCommandList*,int);
     void SetShadowWorldLightMatrix(ID3D12GraphicsCommandList*,const DirectX::XMFLOAT4X4&);
     void EndShadowPass(ID3D12GraphicsCommandList*);
-    void UpdateLights(const DirectX::XMFLOAT3&,const DirectX::XMFLOAT3&,const DeferredLight*,int,
-        const DirectX::XMFLOAT4X4&,const DirectX::XMFLOAT4X4*,const float*);
+
+    void UpdateLights(
+        const DirectX::XMFLOAT3&,
+        const DirectX::XMFLOAT3&,
+        const DeferredLight*,
+        int,
+        const DirectX::XMFLOAT4X4&,
+        const DirectX::XMFLOAT4X4*,
+        const float*,
+        const DirectX::XMFLOAT4X4*,
+        const int*);
+
     void ExecuteLightingPass(ID3D12GraphicsCommandList*,D3D12_CPU_DESCRIPTOR_HANDLE);
 private:
     void BuildGeometryRootSignature(ID3D12Device*); void BuildLightingRootSignature(ID3D12Device*); void BuildShadowRootSignature(ID3D12Device*);

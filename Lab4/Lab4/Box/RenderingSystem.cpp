@@ -50,17 +50,52 @@ void RenderingSystem::EndGeometryPass(ID3D12GraphicsCommandList* cmdList)
 }
 
 void RenderingSystem::UpdateLights(
-    const XMFLOAT3& eyePosW, const XMFLOAT3& ambientLight,
-    const DeferredLight* lights, int numLights, const XMFLOAT4X4& view,
-    const XMFLOAT4X4* shadowTransforms, const float* cascadeSplits)
+    const XMFLOAT3& eyePosW,
+    const XMFLOAT3& ambientLight,
+    const DeferredLight* lights,
+    int numLights,
+    const XMFLOAT4X4& view,
+    const XMFLOAT4X4* shadowTransforms,
+    const float* cascadeSplits,
+    const XMFLOAT4X4* spotShadowTransforms,
+    const int* spotShadowLightIndices)
 {
-    LightingPassConstants c; c.EyePosW=eyePosW; c.AmbientLight=ambientLight;
-    c.NumLights=MathHelper::Clamp(numLights,0,MaxDeferredLights);
-    for(int i=0;i<c.NumLights;++i)c.Lights[i]=lights[i];
-    c.View=view;
-    for(int i=0;i<CascadeCount;++i)c.ShadowTransform[i]=shadowTransforms[i];
-    c.CascadeSplits=XMFLOAT4(cascadeSplits[0],cascadeSplits[1],cascadeSplits[2],cascadeSplits[3]);
-    mLightingCB->CopyData(0,c);
+    LightingPassConstants c;
+
+    c.EyePosW = eyePosW;
+    c.AmbientLight = ambientLight;
+
+    c.NumLights = MathHelper::Clamp(
+        numLights,
+        0,
+        MaxDeferredLights);
+
+    for (int i = 0; i < c.NumLights; ++i)
+        c.Lights[i] = lights[i];
+
+    c.View = view;
+
+    //Directional light
+    for (int i = 0; i < CascadeCount; ++i)
+        c.ShadowTransform[i] = shadowTransforms[i];
+
+    c.CascadeSplits = XMFLOAT4(
+        cascadeSplits[0],
+        cascadeSplits[1],
+        cascadeSplits[2],
+        cascadeSplits[3]);
+
+    //Spot light
+    for (int i = 0; i < SpotShadowCount; ++i)
+        c.SpotShadowTransform[i] = spotShadowTransforms[i];
+
+    c.SpotShadowLightIndices = XMINT4(
+        spotShadowLightIndices[0],
+        spotShadowLightIndices[1],
+        -1,
+        -1);
+
+    mLightingCB->CopyData(0, c);
 }
 
 void RenderingSystem::ExecuteLightingPass(
@@ -334,7 +369,7 @@ void RenderingSystem::BuildLightingDescriptors(ID3D12Device* device)
     CD3DX12_CPU_DESCRIPTOR_HANDLE shadowSrv = albedoSrv; shadowSrv.Offset(1,mCbvSrvDescriptorSize);
     D3D12_SHADER_RESOURCE_VIEW_DESC sd={}; sd.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     sd.Format=DXGI_FORMAT_R32_FLOAT; sd.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-    sd.Texture2DArray.MipLevels=1; sd.Texture2DArray.ArraySize=CascadeCount;
+    sd.Texture2DArray.MipLevels=1; sd.Texture2DArray.ArraySize = ShadowSliceCount;;
     device->CreateShaderResourceView(mShadowMap.Get(),&sd,shadowSrv);
 }
 
@@ -345,15 +380,72 @@ void RenderingSystem::BuildShadowRootSignature(ID3D12Device* device){
     ComPtr<ID3DBlob> b,e; ThrowIfFailed(D3D12SerializeRootSignature(&d,D3D_ROOT_SIGNATURE_VERSION_1,b.GetAddressOf(),e.GetAddressOf()));
     ThrowIfFailed(device->CreateRootSignature(0,b->GetBufferPointer(),b->GetBufferSize(),IID_PPV_ARGS(&mShadowRootSignature)));
 }
-void RenderingSystem::BuildShadowResources(ID3D12Device* device){
-    D3D12_RESOURCE_DESC r=CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R32_TYPELESS,ShadowMapSize,ShadowMapSize,CascadeCount,1,1,0,D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
-    D3D12_CLEAR_VALUE cv={}; cv.Format=DXGI_FORMAT_D32_FLOAT; cv.DepthStencil.Depth=1.0f;
-    auto hp=CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-    ThrowIfFailed(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&r,D3D12_RESOURCE_STATE_DEPTH_WRITE,&cv,IID_PPV_ARGS(&mShadowMap)));
-    D3D12_DESCRIPTOR_HEAP_DESC hd={}; hd.NumDescriptors=CascadeCount; hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_DSV; ThrowIfFailed(device->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&mShadowDsvHeap)));
-    UINT inc=device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV); mDsvDescriptorSize=inc;
-    for(int i=0;i<CascadeCount;++i){ CD3DX12_CPU_DESCRIPTOR_HANDLE h(mShadowDsvHeap->GetCPUDescriptorHandleForHeapStart(),i,inc); D3D12_DEPTH_STENCIL_VIEW_DESC dv={}; dv.Format=DXGI_FORMAT_D32_FLOAT; dv.ViewDimension=D3D12_DSV_DIMENSION_TEXTURE2DARRAY; dv.Texture2DArray.ArraySize=1; dv.Texture2DArray.FirstArraySlice=i; device->CreateDepthStencilView(mShadowMap.Get(),&dv,h); }
+void RenderingSystem::BuildShadowResources(ID3D12Device* device)
+{
+    D3D12_RESOURCE_DESC r =
+        CD3DX12_RESOURCE_DESC::Tex2D(
+            DXGI_FORMAT_R32_TYPELESS,
+            ShadowMapSize,
+            ShadowMapSize,
+            ShadowSliceCount,
+            1,
+            1,
+            0,
+            D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+
+    D3D12_CLEAR_VALUE cv = {};
+    cv.Format = DXGI_FORMAT_D32_FLOAT;
+    cv.DepthStencil.Depth = 1.0f;
+
+    auto hp = CD3DX12_HEAP_PROPERTIES(
+        D3D12_HEAP_TYPE_DEFAULT);
+
+    ThrowIfFailed(
+        device->CreateCommittedResource(
+            &hp,
+            D3D12_HEAP_FLAG_NONE,
+            &r,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            &cv,
+            IID_PPV_ARGS(&mShadowMap)));
+
+    D3D12_DESCRIPTOR_HEAP_DESC hd = {};
+    hd.NumDescriptors = ShadowSliceCount;
+    hd.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+
+    ThrowIfFailed(
+        device->CreateDescriptorHeap(
+            &hd,
+            IID_PPV_ARGS(&mShadowDsvHeap)));
+
+    UINT inc =
+        device->GetDescriptorHandleIncrementSize(
+            D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+
+    mDsvDescriptorSize = inc;
+
+    for (int i = 0; i < ShadowSliceCount; ++i)
+    {
+        CD3DX12_CPU_DESCRIPTOR_HANDLE h(
+            mShadowDsvHeap->GetCPUDescriptorHandleForHeapStart(),
+            i,
+            inc);
+
+        D3D12_DEPTH_STENCIL_VIEW_DESC dv = {};
+        dv.Format = DXGI_FORMAT_D32_FLOAT;
+        dv.ViewDimension =
+            D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+
+        dv.Texture2DArray.ArraySize = 1;
+        dv.Texture2DArray.FirstArraySlice = i;
+
+        device->CreateDepthStencilView(
+            mShadowMap.Get(),
+            &dv,
+            h);
+    }
 }
+
 void RenderingSystem::BeginShadowPass(ID3D12GraphicsCommandList* c){ if(mShadowReadable){auto b=CD3DX12_RESOURCE_BARRIER::Transition(mShadowMap.Get(),D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,D3D12_RESOURCE_STATE_DEPTH_WRITE);c->ResourceBarrier(1,&b);mShadowReadable=false;} c->SetGraphicsRootSignature(mShadowRootSignature.Get()); c->SetPipelineState(mShadowPSO.Get()); }
 void RenderingSystem::BeginShadowCascade(ID3D12GraphicsCommandList* c,int i){
     D3D12_VIEWPORT v={0,0,(float)ShadowMapSize,(float)ShadowMapSize,0,1}; D3D12_RECT r={0,0,(LONG)ShadowMapSize,(LONG)ShadowMapSize};
@@ -361,5 +453,6 @@ void RenderingSystem::BeginShadowCascade(ID3D12GraphicsCommandList* c,int i){
     CD3DX12_CPU_DESCRIPTOR_HANDLE h(mShadowDsvHeap->GetCPUDescriptorHandleForHeapStart(),i,mDsvDescriptorSize);
     c->OMSetRenderTargets(0,nullptr,false,&h); c->ClearDepthStencilView(h,D3D12_CLEAR_FLAG_DEPTH,1.0f,0,0,nullptr);
 }
+
 void RenderingSystem::SetShadowWorldLightMatrix(ID3D12GraphicsCommandList* c,const XMFLOAT4X4& m){ c->SetGraphicsRoot32BitConstants(0,16,&m,0); }
 void RenderingSystem::EndShadowPass(ID3D12GraphicsCommandList* c){ auto b=CD3DX12_RESOURCE_BARRIER::Transition(mShadowMap.Get(),D3D12_RESOURCE_STATE_DEPTH_WRITE,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE); c->ResourceBarrier(1,&b);mShadowReadable=true; }
