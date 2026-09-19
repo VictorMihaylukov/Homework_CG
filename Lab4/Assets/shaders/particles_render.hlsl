@@ -78,8 +78,10 @@ void GS(point VSOut input[1], inout TriangleStream<GSOut> stream)
 
 float4 PS(GSOut input) : SV_Target
 {
-    float2 d = input.UV * 2.0f - 1.0f;
-    float radial = saturate(1.0f - dot(d, d));
-    float3 color = input.Color.rgb * (0.45f + 0.75f * radial);
-    return float4(color, 1.0f);
+    float2 p = input.UV * 2.0f - 1.0f;
+
+    if (length(p) > 0.5f)
+        discard;
+
+    return input.Color;
 }

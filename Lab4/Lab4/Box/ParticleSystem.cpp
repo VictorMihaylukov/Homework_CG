@@ -49,19 +49,44 @@ void ParticleSystem::BuildResources(ID3D12Device* device, ID3D12GraphicsCommandL
     mCounters[1] = CreateUavBuffer(device, sizeof(UINT), D3D12_RESOURCE_STATE_COPY_DEST);
 
     std::vector<ParticleGpu> initial(MaxParticles);
+
     for (UINT i = 0; i < MaxParticles; ++i)
     {
-        const float t = float(i) / float(MaxParticles);
-        const float a = 6.2831853f * (t * 37.0f - floorf(t * 37.0f));
-        const float r = 0.15f + 0.85f * (float((i * 73u) % 997u) / 997.0f);
+        float rx = float((i * 73u) % 997u) / 997.0f;
+        float rz = float((i * 137u) % 991u) / 991.0f;
+        float ry = float((i * 211u) % 983u) / 983.0f;
+        float rv = float((i * 31u) % 127u) / 127.0f;
+
         ParticleGpu p;
-        p.Position = { cosf(a) * r, 0.35f + 3.0f * t, sinf(a) * r };
-        p.Velocity = { cosf(a) * (0.25f + r), 2.4f + 2.2f * (1.0f - t), sinf(a) * (0.25f + r) };
-        p.Age = 4.5f * t;
-        p.Lifetime = 3.0f + 2.0f * (float((i * 47u) % 251u) / 251.0f);
-        p.Color = { 1.0f, 0.35f + 0.55f * t, 0.08f, 1.0f };
-        p.Size = 0.12f + 0.18f * (float((i * 31u) % 127u) / 127.0f);
+
+        p.Position =
+        {
+            (rx - 0.5f) * 18.0f,
+            11.0f + ry * 1.5f,
+            (rz - 0.5f) * 18.0f
+        };
+
+        p.Velocity =
+        {
+            0.0f,
+            -(0.8f + rv * 0.7f),
+            0.0f
+        };
+
+        p.Age = 0.0f;
+        p.Lifetime = 1000.0f;
+
+        p.Color =
+        {
+            0.92f + rx * 0.08f,
+            0.95f + rz * 0.05f,
+            1.0f,
+            1.0f
+        };
+
+        p.Size = 0.05f + rv * 0.05f;
         p.Seed = float(i) + 0.123f;
+
         initial[i] = p;
     }
 
@@ -221,7 +246,8 @@ void ParticleSystem::Update(ID3D12GraphicsCommandList* cmdList, float deltaTime,
         XMFLOAT3 Emitter; float Drag;
         XMFLOAT3 Gravity; float Speed;
         float Pad[2];
-    } c = { deltaTime, totalTime, {0.0f, 0.45f, 0.0f}, 0.12f, {0.0f,-1.9f,0.0f}, 1.0f, {0,0} };
+    } 
+    c = { deltaTime, totalTime, { 0.0f, 11.0f, 0.0f }, 0.0f, { 0.0f, 0.0f, 0.0f }, 1.0f, { 0, 0 } };
     cmdList->SetComputeRoot32BitConstants(2, 12, &c, 0);
 
     const UINT groupSize = 128;
