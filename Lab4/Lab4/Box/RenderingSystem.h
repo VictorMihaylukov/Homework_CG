@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Gbuffer.h"
 #include "../../Common/UploadBuffer.h"
@@ -93,8 +93,6 @@ private:
     Microsoft::WRL::ComPtr<ID3D12PipelineState> mLightingPSO;
 
     Microsoft::WRL::ComPtr<ID3DBlob> mGeometryVS;
-    Microsoft::WRL::ComPtr<ID3DBlob> mGeometryHS;
-    Microsoft::WRL::ComPtr<ID3DBlob> mGeometryDS;
     Microsoft::WRL::ComPtr<ID3DBlob> mGeometryPS;
 
     Microsoft::WRL::ComPtr<ID3DBlob> mLightingVS;

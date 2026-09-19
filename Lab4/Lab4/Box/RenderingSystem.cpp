@@ -1,4 +1,4 @@
-#include "RenderingSystem.h"
+﻿#include "RenderingSystem.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -195,12 +195,6 @@ void RenderingSystem::BuildShaders()
     mGeometryVS = d3dUtil::CompileShader(
         L"../../Assets/shaders/gbuffer.hlsl", nullptr, "VS", "vs_5_0");
 
-    mGeometryHS = d3dUtil::CompileShader(
-        L"../../Assets/shaders/gbuffer.hlsl", nullptr, "HS", "hs_5_0");
-
-    mGeometryDS = d3dUtil::CompileShader(
-        L"../../Assets/shaders/gbuffer.hlsl", nullptr, "DS", "ds_5_0");
-
     mGeometryPS = d3dUtil::CompileShader(
         L"../../Assets/shaders/gbuffer.hlsl", nullptr, "PS", "ps_5_0");
 
@@ -233,25 +227,17 @@ void RenderingSystem::BuildPSOs(
         reinterpret_cast<BYTE*>(mGeometryVS->GetBufferPointer()),
         mGeometryVS->GetBufferSize()
     };
-    geoPsoDesc.HS = {
-    reinterpret_cast<BYTE*>(mGeometryHS->GetBufferPointer()),
-    mGeometryHS->GetBufferSize()
-    };
-
-    geoPsoDesc.DS = {
-        reinterpret_cast<BYTE*>(mGeometryDS->GetBufferPointer()),
-        mGeometryDS->GetBufferSize()
-    };
     geoPsoDesc.PS = {
         reinterpret_cast<BYTE*>(mGeometryPS->GetBufferPointer()),
         mGeometryPS->GetBufferSize()
     };
     geoPsoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     geoPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+    geoPsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
     geoPsoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     geoPsoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     geoPsoDesc.SampleMask = UINT_MAX;
-    geoPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+    geoPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     geoPsoDesc.NumRenderTargets = 3;
     geoPsoDesc.RTVFormats[0] = Gbuffer::PositionFormat;
     geoPsoDesc.RTVFormats[1] = Gbuffer::NormalFormat;

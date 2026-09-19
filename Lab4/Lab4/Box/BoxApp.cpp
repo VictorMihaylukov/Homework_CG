@@ -1,4 +1,4 @@
-#include "../../Common/d3dApp.h"
+﻿#include "../../Common/d3dApp.h"
 #include "../../Common/MathHelper.h"
 #include "../../Common/UploadBuffer.h"
 #include "../../Common/DDSTextureLoader.h"
@@ -9,6 +9,8 @@
 #include <vector>
 #include <string>
 #include <stdexcept>
+#include <array>
+#include <cmath>
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -73,7 +75,8 @@ private:
     std::vector<ComPtr<ID3D12Resource>> mTextureUploadHeaps;
 
     std::unique_ptr<UploadBuffer<ObjectConstants>> mObjectCB = nullptr;
-    std::unique_ptr<MeshGeometry> mBoxGeo = nullptr;
+    std::array<std::unique_ptr<MeshGeometry>, 3> mLodGeometries;
+    size_t mCurrentLod = 0;
     std::vector<std::unique_ptr<Material>> mMaterials;
 
     XMFLOAT4X4 mWorld = MathHelper::Identity4x4();
@@ -219,6 +222,12 @@ void BoxApp::Update(const GameTimer& gt)
         mLights.data(),
         static_cast<int>(mLights.size()));
 
+    // Choose a prebuilt mesh; the rendering pipeline does not tessellate it.
+    const float distance = std::sqrt(mEyePos.x * mEyePos.x +
+                                     mEyePos.y * mEyePos.y +
+                                     mEyePos.z * mEyePos.z);
+    mCurrentLod = distance < 12.0f ? 0 : (distance < 24.0f ? 1 : 2);
+
     mObjectCB->CopyData(0, objConstants);
 }
 
@@ -236,12 +245,13 @@ void BoxApp::Draw(const GameTimer& gt)
     ID3D12DescriptorHeap* descriptorHeaps[] = { mCbvHeap.Get() };
     mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
-    auto vbv = mBoxGeo->VertexBufferView();
-    auto ibv = mBoxGeo->IndexBufferView();
+    const MeshGeometry& geometry = *mLodGeometries[mCurrentLod];
+    auto vbv = geometry.VertexBufferView();
+    auto ibv = geometry.IndexBufferView();
 
     mCommandList->IASetVertexBuffers(0, 1, &vbv);
     mCommandList->IASetIndexBuffer(&ibv);
-    mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST);
+    mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(
         mCbvHeap->GetGPUDescriptorHandleForHeapStart());
@@ -257,9 +267,9 @@ void BoxApp::Draw(const GameTimer& gt)
         std::string submeshName =
             "material_" + std::to_string(materialId);
 
-        auto it = mBoxGeo->DrawArgs.find(submeshName);
+        auto it = geometry.DrawArgs.find(submeshName);
 
-        if (it == mBoxGeo->DrawArgs.end())
+        if (it == geometry.DrawArgs.end())
             continue;
 
         const SubmeshGeometry& submesh = it->second;
@@ -522,6 +532,13 @@ void BoxApp::LoadTexture()
                 texture,
                 uploadHeap));
 
+        // The displacement texture is sampled by the vertex shader.
+        auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+            texture.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        mCommandList->ResourceBarrier(1, &barrier);
+
         int srvIndex = 1 + static_cast<int>(mTextures.size());
         mTextures.push_back(texture);
         mTextureUploadHeaps.push_back(uploadHeap);
@@ -668,66 +685,100 @@ void BoxApp::BuildBoxGeometry()
         }
     }
 
-    const UINT vbByteSize =
-        static_cast<UINT>(vertices.size() * sizeof(Vertex));
-
-    std::vector<std::uint32_t> finalIndices;
-    finalIndices.reserve(vertices.size());
-
-    for (const auto& materialList : materialIndices)
+    // Build three immutable triangle meshes once at startup. Each source
+    // triangle is subdivided into n*n triangles, with interpolated attributes.
+    const std::array<UINT, 3> divisions = { 8, 4, 2 };
+    for (size_t lod = 0; lod < divisions.size(); ++lod)
     {
-        for (std::uint32_t vertexIndex : materialList)
-            finalIndices.push_back(vertexIndex);
-    }
+        const UINT n = divisions[lod];
+        std::vector<Vertex> lodVertices;
+        std::vector<std::uint32_t> lodIndices;
+        std::vector<SubmeshGeometry> submeshes(materialIndices.size());
 
-    const UINT finalIbByteSize =
-        static_cast<UINT>(finalIndices.size() * sizeof(std::uint32_t));
+        for (size_t materialId = 0; materialId < materialIndices.size(); ++materialId)
+        {
+            SubmeshGeometry& submesh = submeshes[materialId];
+            submesh.StartIndexLocation = static_cast<UINT>(lodIndices.size());
+            submesh.BaseVertexLocation = 0;
+            const auto& source = materialIndices[materialId];
 
-    mBoxGeo = std::make_unique<MeshGeometry>();
-    mBoxGeo->Name = "houseGeo";
+            for (size_t triangle = 0; triangle < source.size(); triangle += 3)
+            {
+                const Vertex& v0 = vertices[source[triangle]];
+                const Vertex& v1 = vertices[source[triangle + 1]];
+                const Vertex& v2 = vertices[source[triangle + 2]];
+                const std::uint32_t base = static_cast<std::uint32_t>(lodVertices.size());
 
-    ThrowIfFailed(D3DCreateBlob(vbByteSize, &mBoxGeo->VertexBufferCPU));
-    CopyMemory(mBoxGeo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+                for (UINT i = 0; i <= n; ++i)
+                {
+                    for (UINT j = 0; j <= n - i; ++j)
+                    {
+                        const float b = static_cast<float>(i) / n;
+                        const float c = static_cast<float>(j) / n;
+                        const float a = 1.0f - b - c;
+                        Vertex v;
+                        v.Pos = XMFLOAT3(
+                            a * v0.Pos.x + b * v1.Pos.x + c * v2.Pos.x,
+                            a * v0.Pos.y + b * v1.Pos.y + c * v2.Pos.y,
+                            a * v0.Pos.z + b * v1.Pos.z + c * v2.Pos.z);
+                        v.Normal = XMFLOAT3(
+                            a * v0.Normal.x + b * v1.Normal.x + c * v2.Normal.x,
+                            a * v0.Normal.y + b * v1.Normal.y + c * v2.Normal.y,
+                            a * v0.Normal.z + b * v1.Normal.z + c * v2.Normal.z);
+                        v.TexC = XMFLOAT2(
+                            a * v0.TexC.x + b * v1.TexC.x + c * v2.TexC.x,
+                            a * v0.TexC.y + b * v1.TexC.y + c * v2.TexC.y);
+                        lodVertices.push_back(v);
+                    }
+                }
 
-    ThrowIfFailed(D3DCreateBlob(finalIbByteSize, &mBoxGeo->IndexBufferCPU));
-    CopyMemory(mBoxGeo->IndexBufferCPU->GetBufferPointer(), finalIndices.data(), finalIbByteSize);
+                auto row = [n](UINT i) { return i * (n + 1) - (i * (i - 1)) / 2; };
+                for (UINT i = 0; i < n; ++i)
+                {
+                    for (UINT j = 0; j < n - i; ++j)
+                    {
+                        const auto a = base + row(i) + j;
+                        const auto b = base + row(i + 1) + j;
+                        const auto c = base + row(i) + j + 1;
+                        lodIndices.insert(lodIndices.end(), { a, b, c });
+                        if (j + 1 < n - i)
+                        {
+                            const auto d = base + row(i + 1) + j + 1;
+                            lodIndices.insert(lodIndices.end(), { b, d, c });
+                        }
+                    }
+                }
+            }
+            submesh.IndexCount = static_cast<UINT>(lodIndices.size()) - submesh.StartIndexLocation;
+        }
 
-    mBoxGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(
-        md3dDevice.Get(),
-        mCommandList.Get(),
-        vertices.data(),
-        vbByteSize,
-        mBoxGeo->VertexBufferUploader);
+        if (lodIndices.empty())
+            throw std::runtime_error("house: final index buffer is empty.");
 
-    if (finalIndices.empty())
-        throw std::runtime_error("house: final index buffer is empty.");
-
-    mBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(
-        md3dDevice.Get(),
-        mCommandList.Get(),
-        finalIndices.data(),
-        finalIbByteSize,
-        mBoxGeo->IndexBufferUploader);
-
-    mBoxGeo->VertexByteStride = sizeof(Vertex);
-    mBoxGeo->VertexBufferByteSize = vbByteSize;
-    mBoxGeo->IndexFormat = DXGI_FORMAT_R32_UINT;
-    mBoxGeo->IndexBufferByteSize = finalIbByteSize;
-
-    UINT startIndex = 0;
-    for (size_t materialId = 0; materialId < materialIndices.size(); ++materialId)
-    {
-        const auto& materialList = materialIndices[materialId];
-        if (materialList.empty())
-            continue;
-
-        SubmeshGeometry submesh;
-        submesh.IndexCount = static_cast<UINT>(materialList.size());
-        submesh.StartIndexLocation = startIndex;
-        submesh.BaseVertexLocation = 0;
-
-        mBoxGeo->DrawArgs["material_" + std::to_string(materialId)] = submesh;
-        startIndex += submesh.IndexCount;
+        const UINT vbByteSize = static_cast<UINT>(lodVertices.size() * sizeof(Vertex));
+        const UINT ibByteSize = static_cast<UINT>(lodIndices.size() * sizeof(std::uint32_t));
+        auto geometry = std::make_unique<MeshGeometry>();
+        geometry->Name = "houseLod" + std::to_string(lod);
+        ThrowIfFailed(D3DCreateBlob(vbByteSize, &geometry->VertexBufferCPU));
+        CopyMemory(geometry->VertexBufferCPU->GetBufferPointer(), lodVertices.data(), vbByteSize);
+        ThrowIfFailed(D3DCreateBlob(ibByteSize, &geometry->IndexBufferCPU));
+        CopyMemory(geometry->IndexBufferCPU->GetBufferPointer(), lodIndices.data(), ibByteSize);
+        geometry->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(
+            md3dDevice.Get(), mCommandList.Get(), lodVertices.data(),
+            vbByteSize, geometry->VertexBufferUploader);
+        geometry->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(
+            md3dDevice.Get(), mCommandList.Get(), lodIndices.data(),
+            ibByteSize, geometry->IndexBufferUploader);
+        geometry->VertexByteStride = sizeof(Vertex);
+        geometry->VertexBufferByteSize = vbByteSize;
+        geometry->IndexFormat = DXGI_FORMAT_R32_UINT;
+        geometry->IndexBufferByteSize = ibByteSize;
+        for (size_t materialId = 0; materialId < submeshes.size(); ++materialId)
+        {
+            if (submeshes[materialId].IndexCount != 0)
+                geometry->DrawArgs["material_" + std::to_string(materialId)] = submeshes[materialId];
+        }
+        mLodGeometries[lod] = std::move(geometry);
     }
 }
 

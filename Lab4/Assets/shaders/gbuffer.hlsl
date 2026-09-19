@@ -30,19 +30,6 @@ struct VertexIn
     float2 TexC : TEXCOORD;
 };
 
-struct VertexOut
-{
-    float3 PosL : POSITION;
-    float3 NormalL : NORMAL;
-    float2 TexC : TEXCOORD;
-};
-
-struct PatchTess
-{
-    float Edge[3] : SV_TessFactor;
-    float Inside : SV_InsideTessFactor;
-};
-
 struct DomainOut
 {
     float4 PosH : SV_POSITION;
@@ -58,66 +45,25 @@ struct PixelOut
     float4 Albedo : SV_TARGET2;
 };
 
-VertexOut VS(VertexIn vin)
+DomainOut VS(VertexIn vin)
 {
-    VertexOut vout;
-    vout.PosL = vin.PosL;
-    vout.NormalL = vin.NormalL;
-    vout.TexC = vin.TexC * gTexScale + gTexOffset;
-    return vout;
-}
-
-PatchTess HSConst(InputPatch<VertexOut, 3> patch)
-{
-    PatchTess output;
-    float3 p0 = mul(float4(patch[0].PosL, 1.0f), gWorld).xyz;
-    float3 p1 = mul(float4(patch[1].PosL, 1.0f), gWorld).xyz;
-    float3 p2 = mul(float4(patch[2].PosL, 1.0f), gWorld).xyz;
-    float3 center = (p0 + p1 + p2) / 3.0f;
-
-    float distanceToCamera = distance(center, gEyePosW);
-    float t = saturate((distanceToCamera - gTessNear) / max(gTessFar - gTessNear, 0.001f));
-    float tess = lerp(gTessMax, gTessMin, t);
-
-    output.Edge[0] = tess;
-    output.Edge[1] = tess;
-    output.Edge[2] = tess;
-    output.Inside = tess;
-    return output;
-}
-
-[domain("tri")]
-[partitioning("fractional_odd")]
-[outputtopology("triangle_cw")]
-[outputcontrolpoints(3)]
-[patchconstantfunc("HSConst")]
-VertexOut HS(InputPatch<VertexOut, 3> patch, uint i : SV_OutputControlPointID)
-{
-    return patch[i];
-}
-
-[domain("tri")]
-DomainOut DS(PatchTess patchConstants, const OutputPatch<VertexOut, 3> patch, float3 bary : SV_DomainLocation)
-{
-    DomainOut dout;
-
-    float3 posL = patch[0].PosL * bary.x + patch[1].PosL * bary.y + patch[2].PosL * bary.z;
-    float3 normalL = normalize(patch[0].NormalL * bary.x + patch[1].NormalL * bary.y + patch[2].NormalL * bary.z);
-    float2 texC = patch[0].TexC * bary.x + patch[1].TexC * bary.y + patch[2].TexC * bary.z;
+    DomainOut vout;
+    float3 posL = vin.PosL;
+    float3 normalL = normalize(vin.NormalL);
+    float2 texC = vin.TexC * gTexScale + gTexOffset;
 
     if (gHasDisplacementMap != 0)
     {
         float height = gDisplacementMap.SampleLevel(gSamLinear, texC, 0.0f).r;
-        height = (height - 0.5f) * gDisplacementScale;
-        posL += normalL * height;
+        posL += normalL * ((height - 0.5f) * gDisplacementScale);
     }
 
     float4 posW = mul(float4(posL, 1.0f), gWorld);
-    dout.PosW = posW.xyz;
-    dout.NormalW = normalize(mul(normalL, (float3x3)gWorld));
-    dout.PosH = mul(float4(posL, 1.0f), gWorldViewProj);
-    dout.TexC = texC;
-    return dout;
+    vout.PosW = posW.xyz;
+    vout.NormalW = normalize(mul(normalL, (float3x3)gWorld));
+    vout.PosH = mul(float4(posL, 1.0f), gWorldViewProj);
+    vout.TexC = texC;
+    return vout;
 }
 
 PixelOut PS(DomainOut pin)
