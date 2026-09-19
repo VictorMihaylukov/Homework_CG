@@ -212,10 +212,10 @@ float4 PS(VertexOut pin) : SV_Target
             cascade = depthV > gCascadeSplits.z ? 3 : cascade;
 
             float visibility = CalcDirectionalShadow(posW, cascade);
-            color += visibility * ComputeDirectionalLight( L, normal, toEyeW, albedo);
+            //color += visibility * ComputeDirectionalLight( L, normal, toEyeW, albedo);
         }
-        else if (L.Type == 1)
-            color += ComputePointLight(L, posW, normal, toEyeW, albedo);
+        //else if (L.Type == 1)
+            //color += ComputePointLight(L, posW, normal, toEyeW, albedo);
         else if (L.Type == 2)
         {
             float visibility = CalcSpotShadow(posW, i);

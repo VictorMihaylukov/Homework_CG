@@ -554,7 +554,7 @@ void BoxApp::SetupLights()
     {
         DeferredLight spot;
         spot.Type = static_cast<int>(LightType::Spot);
-        spot.Position = { 5.0f, 8.0f, 0.0f };
+        spot.Position = { 4.0f, 8.0f, 0.0f };
         spot.Direction = { 0.0f, -1.0f, 0.0f };
         spot.Strength = { 2.0f, 1.8f, 1.2f };
         spot.FalloffStart = 3.0f;
@@ -566,7 +566,7 @@ void BoxApp::SetupLights()
     {
         DeferredLight spot;
         spot.Type = static_cast<int>(LightType::Spot);
-        spot.Position = { -5.0f, 8.0f, 0.0f };
+        spot.Position = { -4.0f, 8.0f, 0.0f };
         spot.Direction = { 0.2f, -1.0f, 0.0f };
         spot.Strength = { 1.2f, 1.5f, 2.0f };
         spot.FalloffStart = 3.0f;
@@ -775,6 +775,39 @@ void BoxApp::BuildBoxGeometry()
         maxP.y = (std::max)(maxP.y, v.Pos.y);
         maxP.z = (std::max)(maxP.z, v.Pos.z);
     }
+
+    {
+        const float padding = 8.0f;
+        const float groundY = minP.y - 0.01f;
+        const float x0 = minP.x - padding;
+        const float x1 = maxP.x + padding;
+        const float z0 = minP.z - padding;
+        const float z1 = maxP.z + padding;
+
+        const float uvScale = 0.25f;
+
+        const std::uint32_t baseVertex =
+            static_cast<std::uint32_t>(vertices.size());
+
+        vertices.push_back({ XMFLOAT3(x0, groundY, z0), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) });
+        vertices.push_back({ XMFLOAT3(x0, groundY, z1), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, (z1 - z0) * uvScale) });
+        vertices.push_back({ XMFLOAT3(x1, groundY, z1), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2((x1 - x0) * uvScale, (z1 - z0) * uvScale) });
+        vertices.push_back({ XMFLOAT3(x1, groundY, z0), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2((x1 - x0) * uvScale, 0.0f) });
+
+        materialIndices[0].push_back(baseVertex + 0);
+        materialIndices[0].push_back(baseVertex + 1);
+        materialIndices[0].push_back(baseVertex + 2);
+        materialIndices[0].push_back(baseVertex + 0);
+        materialIndices[0].push_back(baseVertex + 2);
+        materialIndices[0].push_back(baseVertex + 3);
+
+        minP.x = x0;
+        minP.y = groundY;
+        minP.z = z0;
+        maxP.x = x1;
+        maxP.z = z1;
+    }
+
     BoundingBox::CreateFromPoints(
         mLocalBounds,
         XMLoadFloat3(&minP),
@@ -939,14 +972,38 @@ void BoxApp::UpdateCascades()
     const float tanHalf=tanf(0.125f*MathHelper::Pi), aspect=AspectRatio();
     XMVECTOR lightDir=XMVector3Normalize(XMLoadFloat3(&mLights[0].Direction));
     for(int c=0;c<CascadeCount;++c){
-        float n=prev, f=mCascadeSplits[c]; prev=f; XMVECTOR corners[8]; int k=0;
-        for(int plane=0;plane<2;++plane){ float d=plane?f:n; float hh=d*tanHalf, hw=hh*aspect; XMVECTOR center=eye+forward*d;
-            for(int sy=-1;sy<=1;sy+=2) for(int sx=-1;sx<=1;sx+=2) corners[k++]=center+right*(hw*(float)sx)+up*(hh*(float)sy); }
-        XMVECTOR center=XMVectorZero(); for(auto& q:corners) center+=q; center/=8.0f;
-        XMVECTOR lightPos=center-lightDir*120.0f; XMMATRIX lv=XMMatrixLookAtLH(lightPos,center,XMVectorSet(0,1,0,0));
+        float n=prev, f=mCascadeSplits[c];
+        prev=f; 
+        XMVECTOR corners[8]; 
+        int k=0;
+        for(int plane=0;plane<2;++plane)
+        { 
+            float d=plane?f:n; 
+            float hh=d*tanHalf, hw=hh*aspect; 
+            XMVECTOR center=eye+forward*d;
+            for(int sy=-1;sy<=1;sy+=2) 
+                for(int sx=-1;sx<=1;sx+=2) 
+                    corners[k++]=center+right*(hw*(float)sx)+up*(hh*(float)sy); }
+
+        XMVECTOR center=XMVectorZero();
+        for(auto& q:corners) center+=q;
+        center/=8.0f;
+        XMVECTOR lightPos=center-lightDir*120.0f; 
+        XMMATRIX lv=XMMatrixLookAtLH(lightPos,center,XMVectorSet(0,1,0,0));
         XMFLOAT3 mn(FLT_MAX,FLT_MAX,FLT_MAX),mx(-FLT_MAX,-FLT_MAX,-FLT_MAX);
-        for(auto& q:corners){ XMFLOAT3 a; XMStoreFloat3(&a,XMVector3TransformCoord(q,lv)); mn.x=(std::min)(mn.x,a.x);mn.y=(std::min)(mn.y,a.y);mn.z=(std::min)(mn.z,a.z);mx.x=(std::max)(mx.x,a.x);mx.y=(std::max)(mx.y,a.y);mx.z=(std::max)(mx.z,a.z); }
-        mn.z-=80.0f; mx.z+=80.0f; XMMATRIX lp=XMMatrixOrthographicOffCenterLH(mn.x,mx.x,mn.y,mx.y,mn.z,mx.z);
+        for(auto& q:corners)
+        { 
+            XMFLOAT3 a; 
+            XMStoreFloat3(&a,XMVector3TransformCoord(q,lv)); 
+            mn.x=(std::min)(mn.x,a.x);
+            mn.y=(std::min)(mn.y,a.y);
+            mn.z=(std::min)(mn.z,a.z);
+            mx.x=(std::max)(mx.x,a.x);
+            mx.y=(std::max)(mx.y,a.y);
+            mx.z=(std::max)(mx.z,a.z); 
+        }
+        mn.z-=80.0f; mx.z+=80.0f; 
+        XMMATRIX lp=XMMatrixOrthographicOffCenterLH(mn.x,mx.x,mn.y,mx.y,mn.z,mx.z);
         XMStoreFloat4x4(&mShadowTransforms[c],XMMatrixTranspose(lv*lp));
     }
 }
