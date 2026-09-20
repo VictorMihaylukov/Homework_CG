@@ -108,8 +108,11 @@ float3 ComputeSpotLight(Light L, float3 pos, float3 normal, float3 toEye, float3
 
     float att = CalcAttenuation(d, L.FalloffStart, L.FalloffEnd);
     lightStrength *= att;
-
-    float spotFactor = pow(max(dot(-lightVec, normalize(L.Direction)), 0.0f), L.SpotPower);
+    
+    const float outerConeCos = 0.927184f; // cos(22 degrees)
+    const float innerConeCos = 0.945519f; // cos(19 degrees)
+    float cosTheta = dot(-lightVec, normalize(L.Direction));
+    float spotFactor = smoothstep(outerConeCos, innerConeCos, cosTheta);
     lightStrength *= spotFactor;
 
     return BlinnPhong(lightStrength, lightVec, normal, toEye, albedo);

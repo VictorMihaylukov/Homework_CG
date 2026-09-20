@@ -109,7 +109,7 @@ private:
     XMFLOAT2 mTexSpeed = XMFLOAT2(0.0f, 0.0f);
 
     std::vector<DeferredLight> mLights;
-    XMFLOAT3 mAmbientLight = { 0.06f, 0.06f, 0.08f };
+    XMFLOAT3 mAmbientLight = { 0.025f, 0.025f, 0.035f };
     XMFLOAT3 mEyePos = { 0.0f, 0.0f, 0.0f };
     XMFLOAT4X4 mShadowTransforms[CascadeCount] = {};
     float mCascadeSplits[CascadeCount] = {};
@@ -550,28 +550,15 @@ void BoxApp::SetupLights()
         mLights.push_back(point);
     }
 
-    // Spot lights сверху
     {
         DeferredLight spot;
         spot.Type = static_cast<int>(LightType::Spot);
-        spot.Position = { 4.0f, 8.0f, 0.0f };
-        spot.Direction = { 0.0f, -1.0f, 0.0f };
-        spot.Strength = { 2.0f, 1.8f, 1.2f };
-        spot.FalloffStart = 3.0f;
-        spot.FalloffEnd = 20.0f;
-        spot.SpotPower = 32.0f;
-        mLights.push_back(spot);
-    }
-
-    {
-        DeferredLight spot;
-        spot.Type = static_cast<int>(LightType::Spot);
-        spot.Position = { -4.0f, 8.0f, 0.0f };
-        spot.Direction = { 0.2f, -1.0f, 0.0f };
-        spot.Strength = { 1.2f, 1.5f, 2.0f };
-        spot.FalloffStart = 3.0f;
-        spot.FalloffEnd = 20.0f;
-        spot.SpotPower = 24.0f;
+        spot.Position = { 0.0f, 5.0f, -6.0f };
+        spot.Direction = { 0.0f, -0.595f, 0.804f };
+        spot.Strength = { 4.2f, 3.9f, 3.3f };
+        spot.FalloffStart = 5.0f;
+        spot.FalloffEnd = 14.0f;
+        spot.SpotPower = 1.0f;
         mLights.push_back(spot);
     }
 }
@@ -1074,7 +1061,7 @@ void BoxApp::UpdateSpotShadows()
                 up);
 
         const float fovY =
-            XMConvertToRadians(70.0f);
+            XMConvertToRadians(44.0f);
 
         const float nearZ = 0.1f;
 
