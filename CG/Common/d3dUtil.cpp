@@ -43,7 +43,6 @@ Microsoft::WRL::ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(
 {
     ComPtr<ID3D12Resource> defaultBuffer;
 
-    // Create the actual default buffer resource.
     CD3DX12_HEAP_PROPERTIES defaultHeapProps(D3D12_HEAP_TYPE_DEFAULT);
     CD3DX12_RESOURCE_DESC defaultBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(byteSize);
 
@@ -55,8 +54,6 @@ Microsoft::WRL::ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(
         nullptr,
         IID_PPV_ARGS(defaultBuffer.GetAddressOf())));
 
-    // In order to copy CPU memory data into our default buffer, we need to create
-    // an intermediate upload heap. 
     CD3DX12_HEAP_PROPERTIES uploadHeapProps(D3D12_HEAP_TYPE_UPLOAD);
     CD3DX12_RESOURCE_DESC uploadBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(byteSize);
 
@@ -68,16 +65,11 @@ Microsoft::WRL::ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(
         nullptr,
         IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
 
-
-    // Describe the data we want to copy into the default buffer.
     D3D12_SUBRESOURCE_DATA subResourceData = {};
     subResourceData.pData = initData;
     subResourceData.RowPitch = byteSize;
     subResourceData.SlicePitch = subResourceData.RowPitch;
 
-    // Schedule to copy the data to the default buffer resource.  At a high level, the helper function UpdateSubresources
-    // will copy the CPU memory into the intermediate upload heap.  Then, using ID3D12CommandList::CopySubresourceRegion,
-    // the intermediate upload heap data will be copied to mBuffer.
     auto barrier1 = CD3DX12_RESOURCE_BARRIER::Transition(
         defaultBuffer.Get(),
         D3D12_RESOURCE_STATE_COMMON,
@@ -91,11 +83,6 @@ Microsoft::WRL::ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(
         D3D12_RESOURCE_STATE_GENERIC_READ);
 
     cmdList->ResourceBarrier(1, &barrier2);
-
-    // Note: uploadBuffer has to be kept alive after the above function calls because
-    // the command list has not been executed yet that performs the actual copy.
-    // The caller can Release the uploadBuffer after it knows the copy has been executed.
-
 
     return defaultBuffer;
 }
@@ -128,11 +115,8 @@ ComPtr<ID3DBlob> d3dUtil::CompileShader(
 
 std::wstring DxException::ToString()const
 {
-    // Get the string description of the error code.
     _com_error err(ErrorCode);
     std::wstring msg = err.ErrorMessage();
 
     return FunctionName + L" failed in " + Filename + L"; line " + std::to_wstring(LineNumber) + L"; error: " + msg;
 }
-
-

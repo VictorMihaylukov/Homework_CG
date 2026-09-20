@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../Common/d3dUtil.h"
+#include "../Common/d3dUtil.h"
 
 class Gbuffer
 {
@@ -21,7 +21,6 @@ public:
         UINT width,
         UINT height);
 
-    // Создаёт SRV для чтения G-Buffer в lighting pass
     void BuildShaderResourceViews(
         ID3D12Device* device,
         D3D12_CPU_DESCRIPTOR_HANDLE positionSrv,
@@ -61,7 +60,6 @@ private:
     UINT mWidth = 0;
     UINT mHeight = 0;
 
-    // Текстуры G-Buffer
     Microsoft::WRL::ComPtr<ID3D12Resource> mPosition;
     Microsoft::WRL::ComPtr<ID3D12Resource> mNormal;
     Microsoft::WRL::ComPtr<ID3D12Resource> mAlbedo;

@@ -2,10 +2,7 @@
 
 using Microsoft::WRL::ComPtr;
 
-void Gbuffer::Initialize(
-    ID3D12Device* device,
-    UINT width,
-    UINT height)
+void Gbuffer::Initialize(ID3D12Device* device, UINT width, UINT height)
 {
     mWidth = width;
     mHeight = height;
@@ -14,10 +11,7 @@ void Gbuffer::Initialize(
     BuildDescriptors(device);
 }
 
-void Gbuffer::Resize(
-    ID3D12Device* device,
-    UINT width,
-    UINT height)
+void Gbuffer::Resize(ID3D12Device* device, UINT width, UINT height)
 {
     if (width == 0 || height == 0)
         return;
@@ -44,6 +38,7 @@ void Gbuffer::BuildShaderResourceViews(
     D3D12_CPU_DESCRIPTOR_HANDLE albedoSrv)
 {
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MostDetailedMip = 0;
@@ -67,13 +62,7 @@ void Gbuffer::Clear(ID3D12GraphicsCommandList* cmdList)
     cmdList->ClearRenderTargetView(mPositionRTV, clearColor, 0, nullptr);
     cmdList->ClearRenderTargetView(mNormalRTV, clearColor, 0, nullptr);
     cmdList->ClearRenderTargetView(mAlbedoRTV, clearColor, 0, nullptr);
-    cmdList->ClearDepthStencilView(
-        mDepthDSV,
-        D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
-        1.0f,
-        0,
-        0,
-        nullptr);
+    cmdList->ClearDepthStencilView( mDepthDSV, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 }
 
 void Gbuffer::SetAsRenderTargets(ID3D12GraphicsCommandList* cmdList)
@@ -96,10 +85,12 @@ void Gbuffer::TransitionToShaderResource(ID3D12GraphicsCommandList* cmdList)
             mPosition.Get(),
             D3D12_RESOURCE_STATE_RENDER_TARGET,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE),
+
         CD3DX12_RESOURCE_BARRIER::Transition(
             mNormal.Get(),
             D3D12_RESOURCE_STATE_RENDER_TARGET,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE),
+
         CD3DX12_RESOURCE_BARRIER::Transition(
             mAlbedo.Get(),
             D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -117,10 +108,12 @@ void Gbuffer::TransitionToRenderTarget(ID3D12GraphicsCommandList* cmdList)
             mPosition.Get(),
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
             D3D12_RESOURCE_STATE_RENDER_TARGET),
+
         CD3DX12_RESOURCE_BARRIER::Transition(
             mNormal.Get(),
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
             D3D12_RESOURCE_STATE_RENDER_TARGET),
+
         CD3DX12_RESOURCE_BARRIER::Transition(
             mAlbedo.Get(),
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
@@ -137,7 +130,6 @@ void Gbuffer::BuildResources(
 {
     CD3DX12_HEAP_PROPERTIES heapProperties(D3D12_HEAP_TYPE_DEFAULT);
 
-    // position
     auto positionDesc = CD3DX12_RESOURCE_DESC::Tex2D(
         PositionFormat,
         width,
@@ -146,6 +138,7 @@ void Gbuffer::BuildResources(
         D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
     D3D12_CLEAR_VALUE positionClear = {};
+
     positionClear.Format = PositionFormat;
     positionClear.Color[0] = 0.0f;
     positionClear.Color[1] = 0.0f;
@@ -160,7 +153,6 @@ void Gbuffer::BuildResources(
         &positionClear,
         IID_PPV_ARGS(&mPosition)));
 
-    // normal
     auto normalDesc = CD3DX12_RESOURCE_DESC::Tex2D(
         NormalFormat,
         width,
@@ -169,6 +161,7 @@ void Gbuffer::BuildResources(
         D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
     D3D12_CLEAR_VALUE normalClear = {};
+
     normalClear.Format = NormalFormat;
     normalClear.Color[0] = 0.0f;
     normalClear.Color[1] = 0.0f;
@@ -183,7 +176,6 @@ void Gbuffer::BuildResources(
         &normalClear,
         IID_PPV_ARGS(&mNormal)));
 
-    // albedo
     auto albedoDesc = CD3DX12_RESOURCE_DESC::Tex2D(
         AlbedoFormat,
         width,
@@ -206,7 +198,6 @@ void Gbuffer::BuildResources(
         &albedoClear,
         IID_PPV_ARGS(&mAlbedo)));
 
-    // depth
     auto depthDesc = CD3DX12_RESOURCE_DESC::Tex2D(
         DepthFormat,
         width,
@@ -256,7 +247,6 @@ void Gbuffer::BuildDescriptors(ID3D12Device* device)
     device->CreateRenderTargetView(mNormal.Get(), nullptr, mNormalRTV);
     device->CreateRenderTargetView(mAlbedo.Get(), nullptr, mAlbedoRTV);
 
-    // dsv
     D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
     dsvHeapDesc.NumDescriptors = 1;
     dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;

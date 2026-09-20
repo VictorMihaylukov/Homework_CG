@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../Common/d3dUtil.h"
-#include "../../Common/UploadBuffer.h"
+#include "../Common/d3dUtil.h"
+#include "../Common/UploadBuffer.h"
 
 struct ParticleGpu
 {

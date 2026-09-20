@@ -23,6 +23,7 @@
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Box</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>CG</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -144,23 +145,28 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\Common\d3dApp.cpp" />
-    <ClCompile Include="..\..\Common\d3dUtil.cpp" />
-    <ClCompile Include="..\..\Common\DDSTextureLoader.cpp" />
-    <ClCompile Include="..\..\Common\GameTimer.cpp" />
-    <ClCompile Include="..\..\Common\MathHelper.cpp" />
-    <ClCompile Include="BoxApp.cpp" />
+    <ClCompile Include="..\Common\Camera.cpp" />
+    <ClCompile Include="..\Common\d3dApp.cpp" />
+    <ClCompile Include="..\Common\d3dUtil.cpp" />
+    <ClCompile Include="..\Common\DDSTextureLoader.cpp" />
+    <ClCompile Include="..\Common\GameTimer.cpp" />
+    <ClCompile Include="..\Common\GeometryGenerator.cpp" />
+    <ClCompile Include="..\Common\MathHelper.cpp" />
+    <ClCompile Include="App.cpp" />
     <ClCompile Include="Gbuffer.cpp" />
     <ClCompile Include="RenderingSystem.cpp" />
     <ClCompile Include="ParticleSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\Common\d3dApp.h" />
-    <ClInclude Include="..\..\Common\d3dUtil.h" />
-    <ClInclude Include="..\..\Common\DDSTextureLoader.h" />
-    <ClInclude Include="..\..\Common\GameTimer.h" />
-    <ClInclude Include="..\..\Common\MathHelper.h" />
-    <ClInclude Include="..\..\Common\UploadBuffer.h" />
+    <ClInclude Include="..\Common\Camera.h" />
+    <ClInclude Include="..\Common\d3dApp.h" />
+    <ClInclude Include="..\Common\d3dUtil.h" />
+    <ClInclude Include="..\Common\d3dx12.h" />
+    <ClInclude Include="..\Common\DDSTextureLoader.h" />
+    <ClInclude Include="..\Common\GameTimer.h" />
+    <ClInclude Include="..\Common\GeometryGenerator.h" />
+    <ClInclude Include="..\Common\MathHelper.h" />
+    <ClInclude Include="..\Common\UploadBuffer.h" />
     <ClInclude Include="Gbuffer.h" />
     <ClInclude Include="HeaderList.h" />
     <ClInclude Include="RenderingSystem.h" />
@@ -168,22 +174,22 @@
     <ClInclude Include="ParticleSystem.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\Assets\shaders\color.hlsl">
+    <None Include="..\Assets\shaders\color.hlsl">
       <FileType>Document</FileType>
     </None>
-    <None Include="..\..\Assets\shaders\gbuffer.hlsl">
+    <None Include="..\Assets\shaders\deferred_light.hlsl">
       <FileType>Document</FileType>
     </None>
-    <None Include="..\..\Assets\shaders\deferred_light.hlsl">
+    <None Include="..\Assets\shaders\gbuffer.hlsl">
       <FileType>Document</FileType>
     </None>
-    <None Include="..\..\Assets\shaders\shadow.hlsl">
+    <None Include="..\Assets\shaders\particles_compute.hlsl">
       <FileType>Document</FileType>
     </None>
-    <None Include="..\..\Assets\shaders\particles_compute.hlsl">
+    <None Include="..\Assets\shaders\particles_render.hlsl">
       <FileType>Document</FileType>
     </None>
-    <None Include="..\..\Assets\shaders\particles_render.hlsl">
+    <None Include="..\Assets\shaders\shadow.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

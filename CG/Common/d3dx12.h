@@ -1,12 +1,3 @@
-//////////////////////////////////////////////////////////////////////////////
-//
-//  Copyright (C) Microsoft Corporation.  All Rights Reserved.
-//
-//  File:       d3dx12.h
-//  Content:    D3DX12 utility library
-//
-//////////////////////////////////////////////////////////////////////////////
-
 #ifndef __D3DX12_H__
 #define __D3DX12_H__
 
@@ -17,18 +8,15 @@
 struct CD3DX12_DEFAULT {};
 extern const DECLSPEC_SELECTANY CD3DX12_DEFAULT D3D12_DEFAULT;
 
-//------------------------------------------------------------------------------------------------
 inline bool operator==( const D3D12_VIEWPORT& l, const D3D12_VIEWPORT& r )
 {
     return l.TopLeftX == r.TopLeftX && l.TopLeftY == r.TopLeftY && l.Width == r.Width &&
         l.Height == r.Height && l.MinDepth == r.MinDepth && l.MaxDepth == r.MaxDepth;
 }
 
-//------------------------------------------------------------------------------------------------
 inline bool operator!=( const D3D12_VIEWPORT& l, const D3D12_VIEWPORT& r )
 { return !( l == r ); }
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_RECT : public D3D12_RECT
 {
     CD3DX12_RECT()
@@ -51,7 +39,6 @@ struct CD3DX12_RECT : public D3D12_RECT
     operator const D3D12_RECT&() const { return *this; }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_BOX : public D3D12_BOX
 {
     CD3DX12_BOX()
@@ -109,7 +96,6 @@ inline bool operator==( const D3D12_BOX& l, const D3D12_BOX& r )
 inline bool operator!=( const D3D12_BOX& l, const D3D12_BOX& r )
 { return !( l == r ); }
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_DEPTH_STENCIL_DESC : public D3D12_DEPTH_STENCIL_DESC
 {
     CD3DX12_DEPTH_STENCIL_DESC()
@@ -165,7 +151,6 @@ struct CD3DX12_DEPTH_STENCIL_DESC : public D3D12_DEPTH_STENCIL_DESC
     operator const D3D12_DEPTH_STENCIL_DESC&() const { return *this; }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_BLEND_DESC : public D3D12_BLEND_DESC
 {
     CD3DX12_BLEND_DESC()
@@ -192,7 +177,6 @@ struct CD3DX12_BLEND_DESC : public D3D12_BLEND_DESC
     operator const D3D12_BLEND_DESC&() const { return *this; }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_RASTERIZER_DESC : public D3D12_RASTERIZER_DESC
 {
     CD3DX12_RASTERIZER_DESC()
@@ -243,7 +227,6 @@ struct CD3DX12_RASTERIZER_DESC : public D3D12_RASTERIZER_DESC
     operator const D3D12_RASTERIZER_DESC&() const { return *this; }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_RESOURCE_ALLOCATION_INFO : public D3D12_RESOURCE_ALLOCATION_INFO
 {
     CD3DX12_RESOURCE_ALLOCATION_INFO()
@@ -261,7 +244,6 @@ struct CD3DX12_RESOURCE_ALLOCATION_INFO : public D3D12_RESOURCE_ALLOCATION_INFO
     operator const D3D12_RESOURCE_ALLOCATION_INFO&() const { return *this; }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_HEAP_PROPERTIES : public D3D12_HEAP_PROPERTIES
 {
     CD3DX12_HEAP_PROPERTIES()
@@ -309,7 +291,6 @@ inline bool operator==( const D3D12_HEAP_PROPERTIES& l, const D3D12_HEAP_PROPERT
 inline bool operator!=( const D3D12_HEAP_PROPERTIES& l, const D3D12_HEAP_PROPERTIES& r )
 { return !( l == r ); }
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_HEAP_DESC : public D3D12_HEAP_DESC
 {
     CD3DX12_HEAP_DESC()
@@ -396,7 +377,6 @@ inline bool operator==( const D3D12_HEAP_DESC& l, const D3D12_HEAP_DESC& r )
 inline bool operator!=( const D3D12_HEAP_DESC& l, const D3D12_HEAP_DESC& r )
 { return !( l == r ); }
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_CLEAR_VALUE : public D3D12_CLEAR_VALUE
 {
     CD3DX12_CLEAR_VALUE()
@@ -417,14 +397,13 @@ struct CD3DX12_CLEAR_VALUE : public D3D12_CLEAR_VALUE
         UINT8 stencil )
     {
         Format = format;
-        /* Use memcpy to preserve NAN values */
+
         memcpy( &DepthStencil.Depth, &depth, sizeof( depth ) );
         DepthStencil.Stencil = stencil;
     }
     operator const D3D12_CLEAR_VALUE&() const { return *this; }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_RANGE : public D3D12_RANGE
 {
     CD3DX12_RANGE()
@@ -442,7 +421,6 @@ struct CD3DX12_RANGE : public D3D12_RANGE
     operator const D3D12_RANGE&() const { return *this; }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_TILED_RESOURCE_COORDINATE : public D3D12_TILED_RESOURCE_COORDINATE
 {
     CD3DX12_TILED_RESOURCE_COORDINATE()
@@ -464,7 +442,6 @@ struct CD3DX12_TILED_RESOURCE_COORDINATE : public D3D12_TILED_RESOURCE_COORDINAT
     operator const D3D12_TILED_RESOURCE_COORDINATE&() const { return *this; }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_TILE_REGION_SIZE : public D3D12_TILE_REGION_SIZE
 {
     CD3DX12_TILE_REGION_SIZE()
@@ -488,7 +465,6 @@ struct CD3DX12_TILE_REGION_SIZE : public D3D12_TILE_REGION_SIZE
     operator const D3D12_TILE_REGION_SIZE&() const { return *this; }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_SUBRESOURCE_TILING : public D3D12_SUBRESOURCE_TILING
 {
     CD3DX12_SUBRESOURCE_TILING()
@@ -510,7 +486,6 @@ struct CD3DX12_SUBRESOURCE_TILING : public D3D12_SUBRESOURCE_TILING
     operator const D3D12_SUBRESOURCE_TILING&() const { return *this; }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_TILE_SHAPE : public D3D12_TILE_SHAPE
 {
     CD3DX12_TILE_SHAPE()
@@ -530,7 +505,6 @@ struct CD3DX12_TILE_SHAPE : public D3D12_TILE_SHAPE
     operator const D3D12_TILE_SHAPE&() const { return *this; }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_RESOURCE_BARRIER : public D3D12_RESOURCE_BARRIER
 {
     CD3DX12_RESOURCE_BARRIER()
@@ -581,7 +555,6 @@ struct CD3DX12_RESOURCE_BARRIER : public D3D12_RESOURCE_BARRIER
     operator const D3D12_RESOURCE_BARRIER&() const { return *this; }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_PACKED_MIP_INFO : public D3D12_PACKED_MIP_INFO
 {
     CD3DX12_PACKED_MIP_INFO()
@@ -603,7 +576,6 @@ struct CD3DX12_PACKED_MIP_INFO : public D3D12_PACKED_MIP_INFO
     operator const D3D12_PACKED_MIP_INFO&() const { return *this; }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_SUBRESOURCE_FOOTPRINT : public D3D12_SUBRESOURCE_FOOTPRINT
 {
     CD3DX12_SUBRESOURCE_FOOTPRINT()
@@ -637,7 +609,6 @@ struct CD3DX12_SUBRESOURCE_FOOTPRINT : public D3D12_SUBRESOURCE_FOOTPRINT
     operator const D3D12_SUBRESOURCE_FOOTPRINT&() const { return *this; }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_TEXTURE_COPY_LOCATION : public D3D12_TEXTURE_COPY_LOCATION
 { 
     CD3DX12_TEXTURE_COPY_LOCATION()
@@ -660,7 +631,6 @@ struct CD3DX12_TEXTURE_COPY_LOCATION : public D3D12_TEXTURE_COPY_LOCATION
     }
 }; 
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_DESCRIPTOR_RANGE : public D3D12_DESCRIPTOR_RANGE
 {
     CD3DX12_DESCRIPTOR_RANGE() { }
@@ -706,7 +676,6 @@ struct CD3DX12_DESCRIPTOR_RANGE : public D3D12_DESCRIPTOR_RANGE
     }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_ROOT_DESCRIPTOR_TABLE : public D3D12_ROOT_DESCRIPTOR_TABLE
 {
     CD3DX12_ROOT_DESCRIPTOR_TABLE() {}
@@ -737,7 +706,6 @@ struct CD3DX12_ROOT_DESCRIPTOR_TABLE : public D3D12_ROOT_DESCRIPTOR_TABLE
     }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_ROOT_CONSTANTS : public D3D12_ROOT_CONSTANTS
 {
     CD3DX12_ROOT_CONSTANTS() {}
@@ -772,7 +740,6 @@ struct CD3DX12_ROOT_CONSTANTS : public D3D12_ROOT_CONSTANTS
     }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_ROOT_DESCRIPTOR : public D3D12_ROOT_DESCRIPTOR
 {
     CD3DX12_ROOT_DESCRIPTOR() {}
@@ -800,7 +767,6 @@ struct CD3DX12_ROOT_DESCRIPTOR : public D3D12_ROOT_DESCRIPTOR
     }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_ROOT_PARAMETER : public D3D12_ROOT_PARAMETER
 {
     CD3DX12_ROOT_PARAMETER() {}
@@ -906,7 +872,6 @@ struct CD3DX12_ROOT_PARAMETER : public D3D12_ROOT_PARAMETER
     }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_STATIC_SAMPLER_DESC : public D3D12_STATIC_SAMPLER_DESC
 {
     CD3DX12_STATIC_SAMPLER_DESC() {}
@@ -1008,7 +973,6 @@ struct CD3DX12_STATIC_SAMPLER_DESC : public D3D12_STATIC_SAMPLER_DESC
     
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_ROOT_SIGNATURE_DESC : public D3D12_ROOT_SIGNATURE_DESC
 {
     CD3DX12_ROOT_SIGNATURE_DESC() {}
@@ -1055,7 +1019,6 @@ struct CD3DX12_ROOT_SIGNATURE_DESC : public D3D12_ROOT_SIGNATURE_DESC
     }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_CPU_DESCRIPTOR_HANDLE : public D3D12_CPU_DESCRIPTOR_HANDLE
 {
     CD3DX12_CPU_DESCRIPTOR_HANDLE() {}
@@ -1116,7 +1079,6 @@ struct CD3DX12_CPU_DESCRIPTOR_HANDLE : public D3D12_CPU_DESCRIPTOR_HANDLE
     }
 };
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_GPU_DESCRIPTOR_HANDLE : public D3D12_GPU_DESCRIPTOR_HANDLE
 {
     CD3DX12_GPU_DESCRIPTOR_HANDLE() {}
@@ -1177,13 +1139,11 @@ struct CD3DX12_GPU_DESCRIPTOR_HANDLE : public D3D12_GPU_DESCRIPTOR_HANDLE
     }
 };
 
-//------------------------------------------------------------------------------------------------
 inline UINT D3D12CalcSubresource( UINT MipSlice, UINT ArraySlice, UINT PlaneSlice, UINT MipLevels, UINT ArraySize )
 { 
     return MipSlice + ArraySlice * MipLevels + PlaneSlice * MipLevels * ArraySize; 
 }
 
-//------------------------------------------------------------------------------------------------
 template <typename T, typename U, typename V>
 inline void D3D12DecomposeSubresource( UINT Subresource, UINT MipLevels, UINT ArraySize, _Out_ T& MipSlice, _Out_ U& ArraySlice, _Out_ V& PlaneSlice )
 {
@@ -1192,7 +1152,6 @@ inline void D3D12DecomposeSubresource( UINT Subresource, UINT MipLevels, UINT Ar
     PlaneSlice = static_cast<V>(Subresource / (MipLevels * ArraySize));
 }
 
-//------------------------------------------------------------------------------------------------
 inline UINT8 D3D12GetFormatPlaneCount(
     _In_ ID3D12Device* pDevice,
     DXGI_FORMAT Format
@@ -1206,7 +1165,6 @@ inline UINT8 D3D12GetFormatPlaneCount(
     return formatInfo.PlaneCount;
 }
 
-//------------------------------------------------------------------------------------------------
 struct CD3DX12_RESOURCE_DESC : public D3D12_RESOURCE_DESC
 {
     CD3DX12_RESOURCE_DESC()
@@ -1323,8 +1281,6 @@ inline bool operator==( const D3D12_RESOURCE_DESC& l, const D3D12_RESOURCE_DESC&
 inline bool operator!=( const D3D12_RESOURCE_DESC& l, const D3D12_RESOURCE_DESC& r )
 { return !( l == r ); }
 
-//------------------------------------------------------------------------------------------------
-// Row-by-row memcpy
 inline void MemcpySubresource(
     _In_ const D3D12_MEMCPY_DEST* pDest,
     _In_ const D3D12_SUBRESOURCE_DATA* pSrc,
@@ -1345,8 +1301,6 @@ inline void MemcpySubresource(
     }
 }
 
-//------------------------------------------------------------------------------------------------
-// Returns required size of a buffer to be used for data upload
 inline UINT64 GetRequiredIntermediateSize(
     _In_ ID3D12Resource* pDestinationResource,
     _In_range_(0,D3D12_REQ_SUBRESOURCES) UINT FirstSubresource,
@@ -1363,8 +1317,6 @@ inline UINT64 GetRequiredIntermediateSize(
     return RequiredSize;
 }
 
-//------------------------------------------------------------------------------------------------
-// All arrays must be populated (e.g. by calling GetCopyableFootprints)
 inline UINT64 UpdateSubresources(
     _In_ ID3D12GraphicsCommandList* pCmdList,
     _In_ ID3D12Resource* pDestinationResource,
@@ -1377,7 +1329,6 @@ inline UINT64 UpdateSubresources(
     _In_reads_(NumSubresources) const UINT64* pRowSizesInBytes,
     _In_reads_(NumSubresources) const D3D12_SUBRESOURCE_DATA* pSrcData)
 {
-    // Minor validation
     D3D12_RESOURCE_DESC IntermediateDesc = pIntermediate->GetDesc();
     D3D12_RESOURCE_DESC DestinationDesc = pDestinationResource->GetDesc();
     if (IntermediateDesc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER || 
@@ -1422,8 +1373,6 @@ inline UINT64 UpdateSubresources(
     return RequiredSize;
 }
 
-//------------------------------------------------------------------------------------------------
-// Heap-allocating UpdateSubresources implementation
 inline UINT64 UpdateSubresources( 
     _In_ ID3D12GraphicsCommandList* pCmdList,
     _In_ ID3D12Resource* pDestinationResource,
@@ -1459,8 +1408,6 @@ inline UINT64 UpdateSubresources(
     return Result;
 }
 
-//------------------------------------------------------------------------------------------------
-// Stack-allocating UpdateSubresources implementation
 template <UINT MaxSubresources>
 inline UINT64 UpdateSubresources( 
     _In_ ID3D12GraphicsCommandList* pCmdList,
@@ -1485,24 +1432,13 @@ inline UINT64 UpdateSubresources(
     return UpdateSubresources(pCmdList, pDestinationResource, pIntermediate, FirstSubresource, NumSubresources, RequiredSize, Layouts, NumRows, RowSizesInBytes, pSrcData);
 }
 
-//------------------------------------------------------------------------------------------------
 inline bool D3D12IsLayoutOpaque( D3D12_TEXTURE_LAYOUT Layout )
 { return Layout == D3D12_TEXTURE_LAYOUT_UNKNOWN || Layout == D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE; }
 
-//------------------------------------------------------------------------------------------------
 inline ID3D12CommandList * const * CommandListCast(ID3D12GraphicsCommandList * const * pp)
-{
-    // This cast is useful for passing strongly typed command list pointers into
-    // ExecuteCommandLists.
-    // This cast is valid as long as the const-ness is respected. D3D12 APIs do
-    // respect the const-ness of their arguments.
-    return reinterpret_cast<ID3D12CommandList * const *>(pp);
-}
+{ return reinterpret_cast<ID3D12CommandList * const *>(pp); }
 
 
-#endif // defined( __cplusplus )
+#endif
 
-#endif //__D3DX12_H__
-
-
-
+#endif

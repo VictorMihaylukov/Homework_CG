@@ -38,13 +38,13 @@ struct ObjectConstants
     float TessMax = 16.0f;
 };
 
-class BoxApp : public D3DApp
+class App : public D3DApp
 {
 public:
-    BoxApp(HINSTANCE hInstance);
-    BoxApp(const BoxApp& rhs) = delete;
-    BoxApp& operator=(const BoxApp& rhs) = delete;
-    ~BoxApp();
+    App(HINSTANCE hInstance);
+    App(const App& rhs) = delete;
+    App& operator=(const App& rhs) = delete;
+    ~App();
 
     virtual bool Initialize() override;
 
@@ -59,7 +59,7 @@ private:
 
     void BuildDescriptorHeaps();
     void BuildConstantBuffers();
-    void BuildBoxGeometry();
+    void BuildGeometry();
     void LoadTexture();
     void BuildTextureSRV();
     void SetupLights();
@@ -125,7 +125,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 
     try
     {
-        BoxApp theApp(hInstance);
+        App theApp(hInstance);
         if (!theApp.Initialize())
             return 0;
 
@@ -138,17 +138,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
     }
 }
 
-BoxApp::BoxApp(HINSTANCE hInstance)
+App::App(HINSTANCE hInstance)
     : D3DApp(hInstance)
 {
-    mMainWndCaption = L"HW 7";
+    mMainWndCaption = L"CG";
 }
 
-BoxApp::~BoxApp()
+App::~App()
 {
 }
 
-bool BoxApp::Initialize()
+bool App::Initialize()
 {
     if (!D3DApp::Initialize())
         return false;
@@ -169,7 +169,7 @@ bool BoxApp::Initialize()
     BuildDescriptorHeaps();
     LoadTexture();
     BuildTextureSRV();
-    BuildBoxGeometry();
+    BuildGeometry();
     BuildSceneObjects();
     BuildConstantBuffers();
     SetupLights();
@@ -183,7 +183,7 @@ bool BoxApp::Initialize()
     return true;
 }
 
-void BoxApp::OnResize()
+void App::OnResize()
 {
     D3DApp::OnResize();
 
@@ -203,7 +203,7 @@ void BoxApp::OnResize()
     }
 }
 
-void BoxApp::Update(const GameTimer& gt)
+void App::Update(const GameTimer& gt)
 {
     UpdateCullingInput();
 
@@ -248,13 +248,14 @@ void BoxApp::Update(const GameTimer& gt)
     UpdateVisibility();
 
     UpdateCascades();
-    XMFLOAT4X4 viewT; XMStoreFloat4x4(&viewT, XMMatrixTranspose(view));
+    XMFLOAT4X4 viewT;
+    XMStoreFloat4x4(&viewT, XMMatrixTranspose(view));
     UINT postEffectFlags = (mGrayscaleEnabled ? 1u : 0u) | (mVignetteEnabled ? 2u : 0u);
     mRenderingSystem->UpdateLights(mEyePos, mAmbientLight, mLights.data(),
         static_cast<int>(mLights.size()), viewT, mShadowTransforms, mCascadeSplits, postEffectFlags);
 
     std::wostringstream caption;
-    caption << L"HW 7 | particles: " << ParticleSystem::MaxParticles
+    caption << L"CG | particles: " << ParticleSystem::MaxParticles
             << L" | objects: " << mSceneObjects.size()
             << L" | visible: " << mVisibleObjects.size()
             << L" | C: frustum " << (mFrustumCullingEnabled ? L"ON" : L"OFF")
@@ -264,27 +265,35 @@ void BoxApp::Update(const GameTimer& gt)
     SetWindowText(mhMainWnd, caption.str().c_str());
 }
 
-void BoxApp::Draw(const GameTimer& gt)
+void App::Draw(const GameTimer& gt)
 {
     ThrowIfFailed(mDirectCmdListAlloc->Reset());
     ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
-    auto shadowVBV = mBoxGeo->VertexBufferView(); auto shadowIBV = mBoxGeo->IndexBufferView();
+    auto shadowVBV = mBoxGeo->VertexBufferView();
+    auto shadowIBV = mBoxGeo->IndexBufferView();
+
     mRenderingSystem->BeginShadowPass(mCommandList.Get());
-    mCommandList->IASetVertexBuffers(0,1,&shadowVBV); mCommandList->IASetIndexBuffer(&shadowIBV);
+
+    mCommandList->IASetVertexBuffers(0,1,&shadowVBV); 
+    mCommandList->IASetIndexBuffer(&shadowIBV);
     mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
     for(int cascade=0; cascade<CascadeCount; ++cascade)
     {
         mRenderingSystem->BeginShadowCascade(mCommandList.Get(),cascade);
         XMMATRIX lightVP = XMMatrixTranspose(XMLoadFloat4x4(&mShadowTransforms[cascade]));
+
         for(size_t oi=0; oi<mSceneObjects.size(); ++oi)
         {
             XMMATRIX world=XMLoadFloat4x4(&mSceneObjects[oi].World); XMFLOAT4X4 wlp;
             XMStoreFloat4x4(&wlp,XMMatrixTranspose(world*lightVP));
             mRenderingSystem->SetShadowWorldLightMatrix(mCommandList.Get(),wlp);
+
             for(size_t materialId=0; materialId<mMaterials.size(); ++materialId)
             {
                 auto it=mBoxGeo->DrawArgs.find("material_"+std::to_string(materialId));
+
                 if(it!=mBoxGeo->DrawArgs.end() && it->second.IndexCount)
                     mCommandList->DrawIndexedInstanced(it->second.IndexCount,1,it->second.StartIndexLocation,it->second.BaseVertexLocation,0);
             }
@@ -424,19 +433,19 @@ void BoxApp::Draw(const GameTimer& gt)
     FlushCommandQueue();
 }
 
-void BoxApp::OnMouseDown(WPARAM btnState, int x, int y)
+void App::OnMouseDown(WPARAM btnState, int x, int y)
 {
     mLastMousePos.x = x;
     mLastMousePos.y = y;
     SetCapture(mhMainWnd);
 }
 
-void BoxApp::OnMouseUp(WPARAM btnState, int x, int y)
+void App::OnMouseUp(WPARAM btnState, int x, int y)
 {
     ReleaseCapture();
 }
 
-void BoxApp::OnMouseMove(WPARAM btnState, int x, int y)
+void App::OnMouseMove(WPARAM btnState, int x, int y)
 {
     if ((btnState & MK_LBUTTON) != 0)
     {
@@ -460,11 +469,10 @@ void BoxApp::OnMouseMove(WPARAM btnState, int x, int y)
     mLastMousePos.y = y;
 }
 
-void BoxApp::SetupLights()
+void App::SetupLights()
 {
     mLights.clear();
 
-    // Directional - солнце
     {
         DeferredLight sun;
         sun.Type = static_cast<int>(LightType::Directional);
@@ -506,7 +514,6 @@ void BoxApp::SetupLights()
         mLights.push_back(point);
     }
 
-    // Spot lights сверху
     {
         DeferredLight spot;
         spot.Type = static_cast<int>(LightType::Spot);
@@ -532,9 +539,9 @@ void BoxApp::SetupLights()
     }
 }
 
-void BoxApp::LoadTexture()
+void App::LoadTexture()
 {
-    std::string inputfile = "../../Assets/house.obj";
+    std::string inputfile = "../Assets/house.obj";
 
     tinyobj::ObjReaderConfig reader_config;
     reader_config.triangulate = true;
@@ -547,7 +554,7 @@ void BoxApp::LoadTexture()
             OutputDebugStringA(reader.Error().c_str());
 
         throw std::runtime_error(
-            "Failed to load house.obj while loading materials.");
+            "Failed to load model while loading materials.");
     }
 
     const auto& materials = reader.GetMaterials();
@@ -562,7 +569,7 @@ void BoxApp::LoadTexture()
             return -1;
 
         std::wstring filename =
-            L"../../assets/" +
+            L"../assets/" +
             std::wstring(texName.begin(), texName.end());
 
         ComPtr<ID3D12Resource> texture = nullptr;
@@ -574,7 +581,9 @@ void BoxApp::LoadTexture()
                 mCommandList.Get(),
                 filename.c_str(),
                 texture,
-                uploadHeap));
+                uploadHeap
+            )
+        );
 
         int srvIndex = 1 + static_cast<int>(mTextures.size());
         mTextures.push_back(texture);
@@ -605,28 +614,30 @@ void BoxApp::LoadTexture()
     }
 }
 
-void BoxApp::BuildDescriptorHeaps()
+void App::BuildDescriptorHeaps()
 {
     D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
     cbvHeapDesc.NumDescriptors = 64;
     cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     cbvHeapDesc.NodeMask = 0;
+
     ThrowIfFailed(md3dDevice->CreateDescriptorHeap(
         &cbvHeapDesc,
-        IID_PPV_ARGS(&mCbvHeap)));
+        IID_PPV_ARGS(&mCbvHeap))
+    );
 }
 
-void BoxApp::BuildConstantBuffers()
+void App::BuildConstantBuffers()
 {
     const UINT objectCount = static_cast<UINT>((std::max)(size_t(1), mSceneObjects.size()));
     mObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(
         md3dDevice.Get(), objectCount, true);
 }
 
-void BoxApp::BuildBoxGeometry()
+void App::BuildGeometry()
 {
-    std::string inputfile = "../../Assets/house.obj";
+    std::string inputfile = "../Assets/house.obj";
 
     tinyobj::ObjReaderConfig reader_config;
     reader_config.triangulate = true;
@@ -638,7 +649,7 @@ void BoxApp::BuildBoxGeometry()
         if (!reader.Error().empty())
             OutputDebugStringA(reader.Error().c_str());
 
-        throw std::runtime_error("Failed to load house.obj (tinyobj).");
+        throw std::runtime_error("Failed to load model (tinyobj)");
     }
 
     const auto& attrib = reader.GetAttrib();
@@ -650,7 +661,7 @@ void BoxApp::BuildBoxGeometry()
     std::vector<std::vector<std::uint32_t>> materialIndices(mMaterials.size());
 
     if (materialIndices.empty())
-        throw std::runtime_error("house: no materials were loaded.");
+        throw std::runtime_error("model: no materials were loaded.");
 
     for (const auto& shape : shapes)
     {
@@ -711,7 +722,7 @@ void BoxApp::BuildBoxGeometry()
     }
 
     if (vertices.empty())
-        throw std::runtime_error("house: vertex buffer is empty.");
+        throw std::runtime_error("model: vertex buffer is empty.");
 
     XMFLOAT3 minP = vertices[0].Pos;
     XMFLOAT3 maxP = vertices[0].Pos;
@@ -745,7 +756,7 @@ void BoxApp::BuildBoxGeometry()
         static_cast<UINT>(finalIndices.size() * sizeof(std::uint32_t));
 
     mBoxGeo = std::make_unique<MeshGeometry>();
-    mBoxGeo->Name = "houseGeo";
+    mBoxGeo->Name = "modelGeo";
 
     ThrowIfFailed(D3DCreateBlob(vbByteSize, &mBoxGeo->VertexBufferCPU));
     CopyMemory(mBoxGeo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
@@ -761,7 +772,7 @@ void BoxApp::BuildBoxGeometry()
         mBoxGeo->VertexBufferUploader);
 
     if (finalIndices.empty())
-        throw std::runtime_error("house: final index buffer is empty.");
+        throw std::runtime_error("model: final index buffer is empty.");
 
     mBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(
         md3dDevice.Get(),
@@ -792,7 +803,7 @@ void BoxApp::BuildBoxGeometry()
     }
 }
 
-void BoxApp::BuildSceneObjects()
+void App::BuildSceneObjects()
 {
     constexpr int GridSize = 20;
     constexpr float Spacing = 5.0f;
@@ -828,7 +839,7 @@ void BoxApp::BuildSceneObjects()
     std::iota(mVisibleObjects.begin(), mVisibleObjects.end(), 0);
 }
 
-void BoxApp::UpdateCullingInput()
+void App::UpdateCullingInput()
 {
     const bool cDown = (GetAsyncKeyState('C') & 0x8000) != 0;
     const bool oDown = (GetAsyncKeyState('O') & 0x8000) != 0;
@@ -853,7 +864,7 @@ void BoxApp::UpdateCullingInput()
     mPrev2KeyDown = twoDown;
 }
 
-void BoxApp::UpdateVisibility()
+void App::UpdateVisibility()
 {
     if (!mFrustumCullingEnabled)
     {
@@ -887,30 +898,68 @@ void BoxApp::UpdateVisibility()
     }
 }
 
-void BoxApp::UpdateCascades()
+void App::UpdateCascades()
 {
     const float nearZ=0.1f, farZ=180.0f, lambda=0.75f;
     float prev=nearZ;
-    for(int i=0;i<CascadeCount;++i){ float p=float(i+1)/CascadeCount; float logZ=nearZ*powf(farZ/nearZ,p); float linZ=nearZ+(farZ-nearZ)*p; mCascadeSplits[i]=lambda*logZ+(1-lambda)*linZ; }
+
+    for(int i=0;i<CascadeCount;++i)
+    { 
+        float p=float(i+1)/CascadeCount;
+        float logZ=nearZ*powf(farZ/nearZ,p);
+        float linZ=nearZ+(farZ-nearZ)*p;
+        mCascadeSplits[i]=lambda*logZ+(1-lambda)*linZ; 
+    }
+
     XMVECTOR eye=XMLoadFloat3(&mEyePos), target=XMVectorSet(0,2,0,1);
     XMVECTOR forward=XMVector3Normalize(target-eye), right=XMVector3Normalize(XMVector3Cross(XMVectorSet(0,1,0,0),forward));
     XMVECTOR up=XMVector3Normalize(XMVector3Cross(forward,right));
+
     const float tanHalf=tanf(0.125f*MathHelper::Pi), aspect=AspectRatio();
     XMVECTOR lightDir=XMVector3Normalize(XMLoadFloat3(&mLights[0].Direction));
-    for(int c=0;c<CascadeCount;++c){
-        float n=prev, f=mCascadeSplits[c]; prev=f; XMVECTOR corners[8]; int k=0;
-        for(int plane=0;plane<2;++plane){ float d=plane?f:n; float hh=d*tanHalf, hw=hh*aspect; XMVECTOR center=eye+forward*d;
-            for(int sy=-1;sy<=1;sy+=2) for(int sx=-1;sx<=1;sx+=2) corners[k++]=center+right*(hw*(float)sx)+up*(hh*(float)sy); }
+
+    for(int c=0;c<CascadeCount;++c)
+    {
+        float n=prev, f=mCascadeSplits[c]; 
+        prev=f; 
+        XMVECTOR corners[8]; 
+        int k=0;
+
+        for(int plane=0;plane<2;++plane)
+        { 
+            float d=plane?f:n;
+            float hh=d*tanHalf, hw=hh*aspect;
+            XMVECTOR center=eye+forward*d;
+
+            for(int sy=-1;sy<=1;sy+=2) 
+                for(int sx=-1;sx<=1;sx+=2) 
+                    corners[k++]=center+right*(hw*(float)sx)+up*(hh*(float)sy); 
+        }
+
         XMVECTOR center=XMVectorZero(); for(auto& q:corners) center+=q; center/=8.0f;
         XMVECTOR lightPos=center-lightDir*120.0f; XMMATRIX lv=XMMatrixLookAtLH(lightPos,center,XMVectorSet(0,1,0,0));
         XMFLOAT3 mn(FLT_MAX,FLT_MAX,FLT_MAX),mx(-FLT_MAX,-FLT_MAX,-FLT_MAX);
-        for(auto& q:corners){ XMFLOAT3 a; XMStoreFloat3(&a,XMVector3TransformCoord(q,lv)); mn.x=(std::min)(mn.x,a.x);mn.y=(std::min)(mn.y,a.y);mn.z=(std::min)(mn.z,a.z);mx.x=(std::max)(mx.x,a.x);mx.y=(std::max)(mx.y,a.y);mx.z=(std::max)(mx.z,a.z); }
-        mn.z-=80.0f; mx.z+=80.0f; XMMATRIX lp=XMMatrixOrthographicOffCenterLH(mn.x,mx.x,mn.y,mx.y,mn.z,mx.z);
+
+        for(auto& q:corners)
+        { 
+            XMFLOAT3 a; 
+            XMStoreFloat3(&a,XMVector3TransformCoord(q,lv));
+            mn.x=(std::min)(mn.x,a.x);
+            mn.y=(std::min)(mn.y,a.y);
+            mn.z=(std::min)(mn.z,a.z);
+            mx.x=(std::max)(mx.x,a.x);
+            mx.y=(std::max)(mx.y,a.y);
+            mx.z=(std::max)(mx.z,a.z); 
+        }
+
+        mn.z-=80.0f; 
+        mx.z+=80.0f; 
+        XMMATRIX lp=XMMatrixOrthographicOffCenterLH(mn.x,mx.x,mn.y,mx.y,mn.z,mx.z);
         XMStoreFloat4x4(&mShadowTransforms[c],XMMatrixTranspose(lv*lp));
     }
 }
 
-void BoxApp::BuildTextureSRV()
+void App::BuildTextureSRV()
 {
     UINT descriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(
         D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -920,6 +969,7 @@ void BoxApp::BuildTextureSRV()
         auto texture = mTextures[i];
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         srvDesc.Format = texture->GetDesc().Format;
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
