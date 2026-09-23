@@ -18,6 +18,8 @@ struct DeferredLight {
 
 #define MaxDeferredLights 16
 #define CascadeCount 4
+#define SpotShadowCount 2
+#define ShadowSliceCount (CascadeCount + SpotShadowCount)
 
 struct LightingPassConstants {
     DirectX::XMFLOAT3 EyePosW={0,0,0};
@@ -30,6 +32,8 @@ struct LightingPassConstants {
     DirectX::XMFLOAT4X4 InvViewProj = MathHelper::Identity4x4();
     DirectX::XMFLOAT4X4 ShadowTransform[CascadeCount];
     DirectX::XMFLOAT4 CascadeSplits={10,30,100,300};
+    DirectX::XMFLOAT4X4 SpotShadowTransform[SpotShadowCount];
+    DirectX::XMINT4 SpotShadowLightIndices = {-1,-1,-1,-1};
 
     UINT PostEffectFlags = 3;
     DirectX::XMFLOAT3 PostPad = {0,0,0};
@@ -50,7 +54,8 @@ public:
     void SetShadowWorldLightMatrix(ID3D12GraphicsCommandList*,const DirectX::XMFLOAT4X4&);
     void EndShadowPass(ID3D12GraphicsCommandList*);
     void UpdateLights(const DirectX::XMFLOAT3&,const DirectX::XMFLOAT3&,const DeferredLight*,int,
-        const DirectX::XMFLOAT4X4&,const DirectX::XMFLOAT4X4&,const DirectX::XMFLOAT4X4*,const float*,UINT postEffectFlags);
+        const DirectX::XMFLOAT4X4&,const DirectX::XMFLOAT4X4&,const DirectX::XMFLOAT4X4*,const float*,
+        const DirectX::XMFLOAT4X4*,const int*,UINT postEffectFlags);
     void ExecuteLightingPass(ID3D12GraphicsCommandList*,D3D12_CPU_DESCRIPTOR_HANDLE);
 
 private:

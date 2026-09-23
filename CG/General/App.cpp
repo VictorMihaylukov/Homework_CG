@@ -68,6 +68,7 @@ private:
     void UpdateVisibility();
     void UpdateCullingInput();
     void UpdateCascades();
+    void UpdateSpotShadows();
 
 private:
     std::unique_ptr<RenderingSystem> mRenderingSystem;
@@ -115,6 +116,8 @@ private:
     XMFLOAT3 mEyePos = { 0.0f, 0.0f, 0.0f };
     XMFLOAT4X4 mShadowTransforms[CascadeCount] = {};
     float mCascadeSplits[CascadeCount] = {};
+    XMFLOAT4X4 mSpotShadowTransforms[SpotShadowCount] = {};
+    int mSpotShadowLightIndices[SpotShadowCount] = {-1,-1};
 
     POINT mLastMousePos;
 };
@@ -251,6 +254,7 @@ void App::Update(const GameTimer& gt)
     UpdateVisibility();
 
     UpdateCascades();
+    UpdateSpotShadows();
     XMFLOAT4X4 viewT;
     XMStoreFloat4x4(&viewT, XMMatrixTranspose(view));
     XMFLOAT4X4 invViewProjT;
@@ -260,7 +264,8 @@ void App::Update(const GameTimer& gt)
         | (mGBufferPreviewEnabled ? 4u : 0u);
     mRenderingSystem->UpdateLights(mEyePos, mAmbientLight, mLights.data(),
         static_cast<int>(mLights.size()), viewT, invViewProjT,
-        mShadowTransforms, mCascadeSplits, postEffectFlags);
+        mShadowTransforms, mCascadeSplits,
+        mSpotShadowTransforms, mSpotShadowLightIndices, postEffectFlags);
 
     std::wostringstream caption;
     caption << L"CG | particles: " << ParticleSystem::MaxParticles
@@ -305,6 +310,30 @@ void App::Draw(const GameTimer& gt)
 
                 if(it!=mBoxGeo->DrawArgs.end() && it->second.IndexCount)
                     mCommandList->DrawIndexedInstanced(it->second.IndexCount,1,it->second.StartIndexLocation,it->second.BaseVertexLocation,0);
+            }
+        }
+    }
+
+    for(int spot=0; spot<SpotShadowCount; ++spot)
+    {
+        if(mSpotShadowLightIndices[spot] < 0)
+            continue;
+
+        mRenderingSystem->BeginShadowCascade(mCommandList.Get(),CascadeCount+spot);
+        XMMATRIX lightVP=XMMatrixTranspose(XMLoadFloat4x4(&mSpotShadowTransforms[spot]));
+
+        for(size_t oi=0; oi<mSceneObjects.size(); ++oi)
+        {
+            XMMATRIX world=XMLoadFloat4x4(&mSceneObjects[oi].World); XMFLOAT4X4 wlp;
+            XMStoreFloat4x4(&wlp,XMMatrixTranspose(world*lightVP));
+            mRenderingSystem->SetShadowWorldLightMatrix(mCommandList.Get(),wlp);
+
+            for(size_t materialId=0; materialId<mMaterials.size(); ++materialId)
+            {
+                auto it=mBoxGeo->DrawArgs.find("material_"+std::to_string(materialId));
+                if(it!=mBoxGeo->DrawArgs.end() && it->second.IndexCount)
+                    mCommandList->DrawIndexedInstanced(it->second.IndexCount,1,
+                        it->second.StartIndexLocation,it->second.BaseVertexLocation,0);
             }
         }
     }
@@ -512,37 +541,41 @@ void App::SetupLights()
         { 0.5f, 0.9f, 0.9f },
     };
 
-    for (int i = 0; i < _countof(pointPositions); ++i)
+    constexpr bool EnablePointLights = true;
+    if (EnablePointLights)
     {
-        DeferredLight point;
-        point.Type = static_cast<int>(LightType::Point);
-        point.Position = pointPositions[i];
-        point.Strength = pointColors[i];
-        point.FalloffStart = 2.0f;
-        point.FalloffEnd = 12.0f;
-        mLights.push_back(point);
+        for (int i = 0; i < _countof(pointPositions); ++i)
+        {
+            DeferredLight point;
+            point.Type = static_cast<int>(LightType::Point);
+            point.Position = pointPositions[i];
+            point.Strength = pointColors[i];
+            point.FalloffStart = 2.0f;
+            point.FalloffEnd = 12.0f;
+            mLights.push_back(point);
+        }
     }
 
     {
         DeferredLight spot;
         spot.Type = static_cast<int>(LightType::Spot);
-        spot.Position = { 5.0f, 8.0f, 0.0f };
-        spot.Direction = { 0.0f, -1.0f, 0.0f };
-        spot.Strength = { 2.0f, 1.8f, 1.2f };
-        spot.FalloffStart = 3.0f;
-        spot.FalloffEnd = 20.0f;
-        spot.SpotPower = 32.0f;
+        spot.Position = { -20.0f, 14.0f, -13.0f };
+        spot.Direction = { 0.72f, -0.42f, 0.55f };
+        spot.Strength = { 3.0f, 2.7f, 2.2f };
+        spot.FalloffStart = 4.0f;
+        spot.FalloffEnd = 50.0f;
+        spot.SpotPower = 24.0f;
         mLights.push_back(spot);
     }
 
     {
         DeferredLight spot;
         spot.Type = static_cast<int>(LightType::Spot);
-        spot.Position = { -5.0f, 8.0f, 0.0f };
-        spot.Direction = { 0.2f, -1.0f, 0.0f };
-        spot.Strength = { 1.2f, 1.5f, 2.0f };
-        spot.FalloffStart = 3.0f;
-        spot.FalloffEnd = 20.0f;
+        spot.Position = { 24.0f, 14.0f, 18.0f };
+        spot.Direction = { -0.72f, -0.42f, -0.55f };
+        spot.Strength = { 2.0f, 2.4f, 3.2f };
+        spot.FalloffStart = 4.0f;
+        spot.FalloffEnd = 50.0f;
         spot.SpotPower = 24.0f;
         mLights.push_back(spot);
     }
@@ -735,6 +768,22 @@ void App::BuildGeometry()
                 materialIndices[materialId].push_back(vertexIndex);
             }
         }
+    }
+
+    const Vertex groundVertices[] =
+    {
+        {{-22.0f, -1.20f, -15.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+        {{-22.0f, -1.20f,  20.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 8.0f}},
+        {{ 26.0f, -1.20f,  20.0f}, {0.0f, 1.0f, 0.0f}, {8.0f, 8.0f}},
+        {{-22.0f, -1.20f, -15.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+        {{ 26.0f, -1.20f,  20.0f}, {0.0f, 1.0f, 0.0f}, {8.0f, 8.0f}},
+        {{ 26.0f, -1.20f, -15.0f}, {0.0f, 1.0f, 0.0f}, {8.0f, 0.0f}}
+    };
+
+    for(const Vertex& vertex : groundVertices)
+    {
+        materialIndices[0].push_back(static_cast<std::uint32_t>(vertices.size()));
+        vertices.push_back(vertex);
     }
 
     if (vertices.empty())
@@ -956,6 +1005,37 @@ void App::UpdateCascades()
         mx.z+=80.0f; 
         XMMATRIX lp=XMMatrixOrthographicOffCenterLH(mn.x,mx.x,mn.y,mx.y,mn.z,mx.z);
         XMStoreFloat4x4(&mShadowTransforms[c],XMMatrixTranspose(lv*lp));
+    }
+}
+
+void App::UpdateSpotShadows()
+{
+    for(int i=0;i<SpotShadowCount;++i)
+        mSpotShadowLightIndices[i]=-1;
+
+    int shadowIndex=0;
+    for(int lightIndex=0;
+        lightIndex<static_cast<int>(mLights.size()) && shadowIndex<SpotShadowCount;
+        ++lightIndex)
+    {
+        const DeferredLight& light=mLights[lightIndex];
+        if(light.Type!=static_cast<int>(LightType::Spot))
+            continue;
+
+        XMVECTOR position=XMLoadFloat3(&light.Position);
+        XMVECTOR direction=XMVector3Normalize(XMLoadFloat3(&light.Direction));
+        XMVECTOR up=fabsf(XMVectorGetY(direction))>0.98f
+            ? XMVectorSet(0.0f,0.0f,1.0f,0.0f)
+            : XMVectorSet(0.0f,1.0f,0.0f,0.0f);
+
+        XMMATRIX view=XMMatrixLookToLH(position,direction,up);
+        const float nearZ=0.1f;
+        const float farZ=(std::max)(light.FalloffEnd,nearZ+0.1f);
+        XMMATRIX proj=XMMatrixPerspectiveFovLH(XMConvertToRadians(44.0f),1.0f,nearZ,farZ);
+
+        XMStoreFloat4x4(&mSpotShadowTransforms[shadowIndex],XMMatrixTranspose(view*proj));
+        mSpotShadowLightIndices[shadowIndex]=lightIndex;
+        ++shadowIndex;
     }
 }
 
