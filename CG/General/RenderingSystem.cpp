@@ -52,12 +52,14 @@ void RenderingSystem::EndGeometryPass(ID3D12GraphicsCommandList* cmdList)
 void RenderingSystem::UpdateLights(
     const XMFLOAT3& eyePosW, const XMFLOAT3& ambientLight,
     const DeferredLight* lights, int numLights, const XMFLOAT4X4& view,
+    const XMFLOAT4X4& invViewProj,
     const XMFLOAT4X4* shadowTransforms, const float* cascadeSplits, UINT postEffectFlags)
 {
     LightingPassConstants c; c.EyePosW=eyePosW; c.AmbientLight=ambientLight;
     c.NumLights=MathHelper::Clamp(numLights,0,MaxDeferredLights);
     for(int i=0;i<c.NumLights;++i)c.Lights[i]=lights[i];
     c.View=view;
+    c.InvViewProj=invViewProj;
     for(int i=0;i<CascadeCount;++i)c.ShadowTransform[i]=shadowTransforms[i];
     c.CascadeSplits=XMFLOAT4(cascadeSplits[0],cascadeSplits[1],cascadeSplits[2],cascadeSplits[3]);
     c.PostEffectFlags = postEffectFlags;
@@ -253,10 +255,9 @@ void RenderingSystem::BuildPSOs(
     geoPsoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     geoPsoDesc.SampleMask = UINT_MAX;
     geoPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
-    geoPsoDesc.NumRenderTargets = 3;
-    geoPsoDesc.RTVFormats[0] = Gbuffer::PositionFormat;
-    geoPsoDesc.RTVFormats[1] = Gbuffer::NormalFormat;
-    geoPsoDesc.RTVFormats[2] = Gbuffer::AlbedoFormat;
+    geoPsoDesc.NumRenderTargets = 2;
+    geoPsoDesc.RTVFormats[0] = Gbuffer::NormalFormat;
+    geoPsoDesc.RTVFormats[1] = Gbuffer::AlbedoFormat;
     geoPsoDesc.SampleDesc.Count = 1;
     geoPsoDesc.SampleDesc.Quality = 0;
     geoPsoDesc.DSVFormat = Gbuffer::DepthFormat;
@@ -334,18 +335,18 @@ void RenderingSystem::BuildLightingDescriptors(ID3D12Device* device)
         &cbvDesc,
         mLightingHeap->GetCPUDescriptorHandleForHeapStart());
 
-    CD3DX12_CPU_DESCRIPTOR_HANDLE positionSrv(
+    CD3DX12_CPU_DESCRIPTOR_HANDLE depthSrv(
         mLightingHeap->GetCPUDescriptorHandleForHeapStart(),
         1,
         mCbvSrvDescriptorSize);
 
-    CD3DX12_CPU_DESCRIPTOR_HANDLE normalSrv = positionSrv;
+    CD3DX12_CPU_DESCRIPTOR_HANDLE normalSrv = depthSrv;
     normalSrv.Offset(1, mCbvSrvDescriptorSize);
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE albedoSrv = normalSrv;
     albedoSrv.Offset(1, mCbvSrvDescriptorSize);
 
-    mGBuffer.BuildShaderResourceViews(device, positionSrv, normalSrv, albedoSrv);
+    mGBuffer.BuildShaderResourceViews(device, depthSrv, normalSrv, albedoSrv);
     CD3DX12_CPU_DESCRIPTOR_HANDLE shadowSrv = albedoSrv; shadowSrv.Offset(1,mCbvSrvDescriptorSize);
     D3D12_SHADER_RESOURCE_VIEW_DESC sd={};
 
