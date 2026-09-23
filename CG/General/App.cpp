@@ -68,6 +68,7 @@ private:
     void UpdateVisibility();
     void UpdateCullingInput();
     void UpdateCascades();
+    void UpdateSpotShadows();
 
 private:
     std::unique_ptr<RenderingSystem> mRenderingSystem;
@@ -115,6 +116,8 @@ private:
     XMFLOAT3 mEyePos = { 0.0f, 0.0f, 0.0f };
     XMFLOAT4X4 mShadowTransforms[CascadeCount] = {};
     float mCascadeSplits[CascadeCount] = {};
+    XMFLOAT4X4 mSpotShadowTransforms[SpotShadowCount] = {};
+    int mSpotShadowLightIndices[SpotShadowCount] = {-1,-1};
 
     POINT mLastMousePos;
 };
@@ -251,6 +254,7 @@ void App::Update(const GameTimer& gt)
     UpdateVisibility();
 
     UpdateCascades();
+    UpdateSpotShadows();
     XMFLOAT4X4 viewT;
     XMStoreFloat4x4(&viewT, XMMatrixTranspose(view));
     XMFLOAT4X4 invViewProjT;
@@ -260,7 +264,8 @@ void App::Update(const GameTimer& gt)
         | (mGBufferPreviewEnabled ? 4u : 0u);
     mRenderingSystem->UpdateLights(mEyePos, mAmbientLight, mLights.data(),
         static_cast<int>(mLights.size()), viewT, invViewProjT,
-        mShadowTransforms, mCascadeSplits, postEffectFlags);
+        mShadowTransforms, mCascadeSplits,
+        mSpotShadowTransforms, mSpotShadowLightIndices, postEffectFlags);
 
     std::wostringstream caption;
     caption << L"CG | particles: " << ParticleSystem::MaxParticles
@@ -305,6 +310,30 @@ void App::Draw(const GameTimer& gt)
 
                 if(it!=mBoxGeo->DrawArgs.end() && it->second.IndexCount)
                     mCommandList->DrawIndexedInstanced(it->second.IndexCount,1,it->second.StartIndexLocation,it->second.BaseVertexLocation,0);
+            }
+        }
+    }
+
+    for(int spot=0; spot<SpotShadowCount; ++spot)
+    {
+        if(mSpotShadowLightIndices[spot] < 0)
+            continue;
+
+        mRenderingSystem->BeginShadowCascade(mCommandList.Get(),CascadeCount+spot);
+        XMMATRIX lightVP=XMMatrixTranspose(XMLoadFloat4x4(&mSpotShadowTransforms[spot]));
+
+        for(size_t oi=0; oi<mSceneObjects.size(); ++oi)
+        {
+            XMMATRIX world=XMLoadFloat4x4(&mSceneObjects[oi].World); XMFLOAT4X4 wlp;
+            XMStoreFloat4x4(&wlp,XMMatrixTranspose(world*lightVP));
+            mRenderingSystem->SetShadowWorldLightMatrix(mCommandList.Get(),wlp);
+
+            for(size_t materialId=0; materialId<mMaterials.size(); ++materialId)
+            {
+                auto it=mBoxGeo->DrawArgs.find("material_"+std::to_string(materialId));
+                if(it!=mBoxGeo->DrawArgs.end() && it->second.IndexCount)
+                    mCommandList->DrawIndexedInstanced(it->second.IndexCount,1,
+                        it->second.StartIndexLocation,it->second.BaseVertexLocation,0);
             }
         }
     }
@@ -956,6 +985,37 @@ void App::UpdateCascades()
         mx.z+=80.0f; 
         XMMATRIX lp=XMMatrixOrthographicOffCenterLH(mn.x,mx.x,mn.y,mx.y,mn.z,mx.z);
         XMStoreFloat4x4(&mShadowTransforms[c],XMMatrixTranspose(lv*lp));
+    }
+}
+
+void App::UpdateSpotShadows()
+{
+    for(int i=0;i<SpotShadowCount;++i)
+        mSpotShadowLightIndices[i]=-1;
+
+    int shadowIndex=0;
+    for(int lightIndex=0;
+        lightIndex<static_cast<int>(mLights.size()) && shadowIndex<SpotShadowCount;
+        ++lightIndex)
+    {
+        const DeferredLight& light=mLights[lightIndex];
+        if(light.Type!=static_cast<int>(LightType::Spot))
+            continue;
+
+        XMVECTOR position=XMLoadFloat3(&light.Position);
+        XMVECTOR direction=XMVector3Normalize(XMLoadFloat3(&light.Direction));
+        XMVECTOR up=fabsf(XMVectorGetY(direction))>0.98f
+            ? XMVectorSet(0.0f,0.0f,1.0f,0.0f)
+            : XMVectorSet(0.0f,1.0f,0.0f,0.0f);
+
+        XMMATRIX view=XMMatrixLookToLH(position,direction,up);
+        const float nearZ=0.1f;
+        const float farZ=(std::max)(light.FalloffEnd,nearZ+0.1f);
+        XMMATRIX proj=XMMatrixPerspectiveFovLH(XMConvertToRadians(44.0f),1.0f,nearZ,farZ);
+
+        XMStoreFloat4x4(&mSpotShadowTransforms[shadowIndex],XMMatrixTranspose(view*proj));
+        mSpotShadowLightIndices[shadowIndex]=lightIndex;
+        ++shadowIndex;
     }
 }
 
