@@ -27,6 +27,7 @@ struct LightingPassConstants {
     DeferredLight Lights[MaxDeferredLights];
 
     DirectX::XMFLOAT4X4 View = MathHelper::Identity4x4();
+    DirectX::XMFLOAT4X4 InvViewProj = MathHelper::Identity4x4();
     DirectX::XMFLOAT4X4 ShadowTransform[CascadeCount];
     DirectX::XMFLOAT4 CascadeSplits={10,30,100,300};
 
@@ -49,7 +50,7 @@ public:
     void SetShadowWorldLightMatrix(ID3D12GraphicsCommandList*,const DirectX::XMFLOAT4X4&);
     void EndShadowPass(ID3D12GraphicsCommandList*);
     void UpdateLights(const DirectX::XMFLOAT3&,const DirectX::XMFLOAT3&,const DeferredLight*,int,
-        const DirectX::XMFLOAT4X4&,const DirectX::XMFLOAT4X4*,const float*,UINT postEffectFlags);
+        const DirectX::XMFLOAT4X4&,const DirectX::XMFLOAT4X4&,const DirectX::XMFLOAT4X4*,const float*,UINT postEffectFlags);
     void ExecuteLightingPass(ID3D12GraphicsCommandList*,D3D12_CPU_DESCRIPTOR_HANDLE);
 
 private:

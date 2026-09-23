@@ -20,13 +20,14 @@ cbuffer cbPass : register(b0)
     float gPad0;
     Light gLights[MaxLights];
     float4x4 gView;
+    float4x4 gInvViewProj;
     float4x4 gShadowTransform[4];
     float4 gCascadeSplits;
     uint gPostEffectFlags;
     float3 gPostPad;
 };
 
-Texture2D gPositionMap : register(t0);
+Texture2D gDepthMap    : register(t0);
 Texture2D gNormalMap   : register(t1);
 Texture2D gAlbedoMap   : register(t2);
 Texture2DArray<float> gShadowMap : register(t3);
@@ -175,14 +176,40 @@ float3 ApplyVignette(float3 color, float2 uv)
 
 float4 PS(VertexOut pin) : SV_Target
 {
-    float4 positionSample = gPositionMap.Sample(gSamPoint, pin.TexC);
+    float depth = gDepthMap.Sample(gSamPoint, pin.TexC).r;
     float3 normal = normalize(gNormalMap.Sample(gSamPoint, pin.TexC).xyz);
     float3 albedo = gAlbedoMap.Sample(gSamPoint, pin.TexC).rgb;
-    
-    if (positionSample.a < 0.5f)
+
+    if ((gPostEffectFlags & 4u) != 0u && pin.TexC.x < 0.60f && pin.TexC.y < 0.25f)
+    {
+        if (pin.TexC.x < 0.20f)
+        {
+            float2 debugUV = float2(pin.TexC.x / 0.20f, pin.TexC.y / 0.25f);
+            float d = gDepthMap.Sample(gSamPoint, debugUV).r;
+            return float4(d, d, d, 1.0f);
+        }
+
+        if (pin.TexC.x < 0.40f)
+        {
+            float2 debugUV = float2((pin.TexC.x - 0.20f) / 0.20f, pin.TexC.y / 0.25f);
+            float3 n = gNormalMap.Sample(gSamPoint, debugUV).xyz;
+            return float4(n * 0.5f + 0.5f, 1.0f);
+        }
+
+        float2 debugUV = float2((pin.TexC.x - 0.40f) / 0.20f, pin.TexC.y / 0.25f);
+        return float4(gAlbedoMap.Sample(gSamPoint, debugUV).rgb, 1.0f);
+    }
+
+    if (depth >= 1.0f)
         return float4(0.02f, 0.02f, 0.03f, 1.0f);
 
-    float3 posW = positionSample.xyz;
+    float4 posH = float4(
+        pin.TexC.x * 2.0f - 1.0f,
+        1.0f - pin.TexC.y * 2.0f,
+        depth,
+        1.0f);
+    float4 reconstructed = mul(posH, gInvViewProj);
+    float3 posW = reconstructed.xyz / reconstructed.w;
     float3 toEyeW = normalize(gEyePosW - posW);
 
     float3 color = albedo * gAmbientLight;

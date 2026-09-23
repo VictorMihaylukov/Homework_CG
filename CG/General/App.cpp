@@ -92,8 +92,10 @@ private:
     bool mPrevOKeyDown = false;
     bool mGrayscaleEnabled = true;
     bool mVignetteEnabled = true;
+    bool mGBufferPreviewEnabled = false;
     bool mPrev1KeyDown = false;
     bool mPrev2KeyDown = false;
+    bool mPrevGKeyDown = false;
 
     std::vector<std::unique_ptr<Material>> mMaterials;
 
@@ -251,9 +253,14 @@ void App::Update(const GameTimer& gt)
     UpdateCascades();
     XMFLOAT4X4 viewT;
     XMStoreFloat4x4(&viewT, XMMatrixTranspose(view));
-    UINT postEffectFlags = (mGrayscaleEnabled ? 1u : 0u) | (mVignetteEnabled ? 2u : 0u);
+    XMFLOAT4X4 invViewProjT;
+    XMStoreFloat4x4(&invViewProjT, XMMatrixTranspose(XMMatrixInverse(nullptr, view * proj)));
+    UINT postEffectFlags = (mGrayscaleEnabled ? 1u : 0u)
+        | (mVignetteEnabled ? 2u : 0u)
+        | (mGBufferPreviewEnabled ? 4u : 0u);
     mRenderingSystem->UpdateLights(mEyePos, mAmbientLight, mLights.data(),
-        static_cast<int>(mLights.size()), viewT, mShadowTransforms, mCascadeSplits, postEffectFlags);
+        static_cast<int>(mLights.size()), viewT, invViewProjT,
+        mShadowTransforms, mCascadeSplits, postEffectFlags);
 
     std::wostringstream caption;
     caption << L"CG | particles: " << ParticleSystem::MaxParticles
@@ -261,6 +268,7 @@ void App::Update(const GameTimer& gt)
             << L" | visible: " << mVisibleObjects.size()
             << L" | C: frustum " << (mFrustumCullingEnabled ? L"ON" : L"OFF")
             << L" | O: octree " << (mOctreeEnabled ? L"ON" : L"OFF")
+            << L" | G: G-buffer " << (mGBufferPreviewEnabled ? L"ON" : L"OFF")
             << L" | 1: grayscale " << (mGrayscaleEnabled ? L"ON" : L"OFF")
             << L" | 2: vignette " << (mVignetteEnabled ? L"ON" : L"OFF");
     SetWindowText(mhMainWnd, caption.str().c_str());
@@ -832,6 +840,7 @@ void App::UpdateCullingInput()
     const bool oDown = (GetAsyncKeyState('O') & 0x8000) != 0;
     const bool oneDown = (GetAsyncKeyState('1') & 0x8000) != 0;
     const bool twoDown = (GetAsyncKeyState('2') & 0x8000) != 0;
+    const bool gDown = (GetAsyncKeyState('G') & 0x8000) != 0;
 
     if (cDown && !mPrevCKeyDown)
         mFrustumCullingEnabled = !mFrustumCullingEnabled;
@@ -845,10 +854,14 @@ void App::UpdateCullingInput()
     if (twoDown && !mPrev2KeyDown)
         mVignetteEnabled = !mVignetteEnabled;
 
+    if (gDown && !mPrevGKeyDown)
+        mGBufferPreviewEnabled = !mGBufferPreviewEnabled;
+
     mPrevCKeyDown = cDown;
     mPrevOKeyDown = oDown;
     mPrev1KeyDown = oneDown;
     mPrev2KeyDown = twoDown;
+    mPrevGKeyDown = gDown;
 }
 
 void App::UpdateVisibility()
