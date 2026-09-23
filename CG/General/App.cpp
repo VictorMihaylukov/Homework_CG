@@ -541,37 +541,41 @@ void App::SetupLights()
         { 0.5f, 0.9f, 0.9f },
     };
 
-    for (int i = 0; i < _countof(pointPositions); ++i)
+    constexpr bool EnablePointLights = true;
+    if (EnablePointLights)
     {
-        DeferredLight point;
-        point.Type = static_cast<int>(LightType::Point);
-        point.Position = pointPositions[i];
-        point.Strength = pointColors[i];
-        point.FalloffStart = 2.0f;
-        point.FalloffEnd = 12.0f;
-        mLights.push_back(point);
+        for (int i = 0; i < _countof(pointPositions); ++i)
+        {
+            DeferredLight point;
+            point.Type = static_cast<int>(LightType::Point);
+            point.Position = pointPositions[i];
+            point.Strength = pointColors[i];
+            point.FalloffStart = 2.0f;
+            point.FalloffEnd = 12.0f;
+            mLights.push_back(point);
+        }
     }
 
     {
         DeferredLight spot;
         spot.Type = static_cast<int>(LightType::Spot);
-        spot.Position = { 5.0f, 8.0f, 0.0f };
-        spot.Direction = { 0.0f, -1.0f, 0.0f };
-        spot.Strength = { 2.0f, 1.8f, 1.2f };
-        spot.FalloffStart = 3.0f;
-        spot.FalloffEnd = 20.0f;
-        spot.SpotPower = 32.0f;
+        spot.Position = { -20.0f, 14.0f, -13.0f };
+        spot.Direction = { 0.72f, -0.42f, 0.55f };
+        spot.Strength = { 3.0f, 2.7f, 2.2f };
+        spot.FalloffStart = 4.0f;
+        spot.FalloffEnd = 50.0f;
+        spot.SpotPower = 24.0f;
         mLights.push_back(spot);
     }
 
     {
         DeferredLight spot;
         spot.Type = static_cast<int>(LightType::Spot);
-        spot.Position = { -5.0f, 8.0f, 0.0f };
-        spot.Direction = { 0.2f, -1.0f, 0.0f };
-        spot.Strength = { 1.2f, 1.5f, 2.0f };
-        spot.FalloffStart = 3.0f;
-        spot.FalloffEnd = 20.0f;
+        spot.Position = { 24.0f, 14.0f, 18.0f };
+        spot.Direction = { -0.72f, -0.42f, -0.55f };
+        spot.Strength = { 2.0f, 2.4f, 3.2f };
+        spot.FalloffStart = 4.0f;
+        spot.FalloffEnd = 50.0f;
         spot.SpotPower = 24.0f;
         mLights.push_back(spot);
     }
@@ -764,6 +768,22 @@ void App::BuildGeometry()
                 materialIndices[materialId].push_back(vertexIndex);
             }
         }
+    }
+
+    const Vertex groundVertices[] =
+    {
+        {{-22.0f, -1.20f, -15.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+        {{-22.0f, -1.20f,  20.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 8.0f}},
+        {{ 26.0f, -1.20f,  20.0f}, {0.0f, 1.0f, 0.0f}, {8.0f, 8.0f}},
+        {{-22.0f, -1.20f, -15.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+        {{ 26.0f, -1.20f,  20.0f}, {0.0f, 1.0f, 0.0f}, {8.0f, 8.0f}},
+        {{ 26.0f, -1.20f, -15.0f}, {0.0f, 1.0f, 0.0f}, {8.0f, 0.0f}}
+    };
+
+    for(const Vertex& vertex : groundVertices)
+    {
+        materialIndices[0].push_back(static_cast<std::uint32_t>(vertices.size()));
+        vertices.push_back(vertex);
     }
 
     if (vertices.empty())
