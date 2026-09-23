@@ -419,3 +419,8 @@ FodyWeavers.xsd
 Lab4/Lab4/Box/CppProperties.json
 /Lab4/Textures
 /Lab4/Shaders
+
+# Project assets are source data, not compiler object files.
+# Keep Wavefront models in Git while *.obj build artifacts stay ignored.
+!CG/Assets/*.obj
+!CG/Assets/**/*.obj

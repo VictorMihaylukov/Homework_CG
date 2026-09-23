@@ -1,0 +1,2 @@
+CG/Assets/*.obj filter=lfs diff=lfs merge=lfs -text
+CG/Assets/textures/*.dds filter=lfs diff=lfs merge=lfs -text

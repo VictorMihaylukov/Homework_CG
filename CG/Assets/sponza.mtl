@@ -1,0 +1,831 @@
+# Blender 5.2.2 LTS MTL File: 'None'
+# www.blender.org
+
+newmtl arch_stone_wall_01
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/arch_stone_wall_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/arch_stone_wall_01_Normal.dds
+norm textures/arch_stone_wall_01_Normal.dds
+map_Pr textures/arch_stone_wall_01_Roughness.dds
+map_Pm textures/arch_stone_wall_01_Metalness.dds
+newmtl arch_stone_wall_01.001
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/arch_stone_wall_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/arch_stone_wall_01_Normal.dds
+norm textures/arch_stone_wall_01_Normal.dds
+map_Pr textures/arch_stone_wall_01_Roughness.dds
+map_Pm textures/arch_stone_wall_01_Metalness.dds
+newmtl brickwall_01
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/brickwall_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/brickwall_01_Normal.dds
+norm textures/brickwall_01_Normal.dds
+map_Pr textures/brickwall_01_Roughness.dds
+map_Pm textures/brickwall_01_Metalness.dds
+newmtl brickwall_01.001
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/brickwall_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/brickwall_01_Normal.dds
+norm textures/brickwall_01_Normal.dds
+map_Pr textures/brickwall_01_Roughness.dds
+map_Pm textures/brickwall_01_Metalness.dds
+newmtl brickwall_02
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/brickwall_02_BaseColor.dds
+map_Bump -bm 1.000000 textures/brickwall_02_Normal.dds
+norm textures/brickwall_02_Normal.dds
+map_Pr textures/brickwall_02_Roughness.dds
+map_Pm textures/brickwall_02_Metalness.dds
+newmtl brickwall_02.001
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/brickwall_02_BaseColor.dds
+map_Bump -bm 1.000000 textures/brickwall_02_Normal.dds
+norm textures/brickwall_02_Normal.dds
+map_Pr textures/brickwall_02_Roughness.dds
+map_Pm textures/brickwall_02_Metalness.dds
+newmtl ceiling_plaster_01
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/ceiling_plaster_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/ceiling_plaster_01_Normal.dds
+norm textures/ceiling_plaster_01_Normal.dds
+map_Pr textures/ceiling_plaster_01_Roughness.dds
+map_Pm textures/ceiling_plaster_01_Metalness.dds
+newmtl ceiling_plaster_02
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/ceiling_plaster_02_BaseColor.dds
+map_Bump -bm 1.000000 textures/ceiling_plaster_02_Normal.dds
+norm textures/ceiling_plaster_02_Normal.dds
+map_Pr textures/ceiling_plaster_02_Roughness.dds
+map_Pm textures/ceiling_plaster_02_Metalness.dds
+newmtl ceiling_plaster_02.001
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/ceiling_plaster_02_BaseColor.dds
+map_Bump -bm 1.000000 textures/ceiling_plaster_02_Normal.dds
+norm textures/ceiling_plaster_02_Normal.dds
+map_Pr textures/ceiling_plaster_02_Roughness.dds
+map_Pm textures/ceiling_plaster_02_Metalness.dds
+newmtl column_1stfloor
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/col_1stfloor_BaseColor.dds
+map_Bump -bm 1.000000 textures/col_1stfloor_Normal.dds
+norm textures/col_1stfloor_Normal.dds
+map_Pr textures/col_1stfloor_Roughness.dds
+map_Pm textures/col_1stfloor_Metalness.dds
+newmtl column_brickwall_01
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/col_brickwall_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/col_brickwall_01_Normal.dds
+norm textures/col_brickwall_01_Normal.dds
+map_Pr textures/col_brickwall_01_Roughness.dds
+map_Pm textures/col_brickwall_01_Metalness.dds
+newmtl column_head_1stfloor
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/col_head_1stfloor_BaseColor.dds
+map_Bump -bm 1.000000 textures/col_head_1stfloor_Normal.dds
+norm textures/col_head_1stfloor_Normal.dds
+map_Pr textures/col_head_1stfloor_Roughness.dds
+map_Pm textures/col_head_1stfloor_Metalness.dds
+newmtl column_head_2ndfloor_02
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/col_head_2ndfloor_02_BaseColor.dds
+map_Bump -bm 1.000000 textures/col_head_2ndfloor_02_Normal.dds
+norm textures/col_head_2ndfloor_02_Normal.dds
+map_Pr textures/col_head_2ndfloor_02_Roughness.dds
+map_Pm textures/col_head_2ndfloor_02_Metalness.dds
+newmtl column_head_2ndfloor_03
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/col_head_2ndfloor_03_BaseColor.dds
+map_Bump -bm 1.000000 textures/col_head_2ndfloor_03_Normal.dds
+norm textures/col_head_2ndfloor_03_Normal.dds
+map_Pr textures/col_head_2ndfloor_03_Roughness.dds
+map_Pm textures/col_head_2ndfloor_03_Metalness.dds
+newmtl dirt_decal
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 3
+Pr 1.000000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+map_Kd textures/dirt_decal_01.dds
+map_d textures/dirt_decal_01_alpha.dds
+newmtl dirt_decal.001
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 3
+Pr 1.000000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/dirt_decal_01.dds
+map_d textures/dirt_decal_01_alpha.dds
+newmtl door_stoneframe_01
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/door_stoneframe_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/door_stoneframe_01_Normal.dds
+norm textures/door_stoneframe_01_Normal.dds
+map_Pr textures/door_stoneframe_01_Roughness.dds
+map_Pm textures/door_stoneframe_01_Metalness.dds
+newmtl door_stoneframe_01.001
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/door_stoneframe_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/door_stoneframe_01_Normal.dds
+norm textures/door_stoneframe_01_Normal.dds
+map_Pr textures/door_stoneframe_01_Roughness.dds
+map_Pm textures/door_stoneframe_01_Metalness.dds
+newmtl door_stoneframe_02
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/door_stoneframe_02_BaseColor.dds
+map_Bump -bm 1.000000 textures/door_stoneframe_02_Normal.dds
+norm textures/door_stoneframe_02_Normal.dds
+map_Pr textures/door_stoneframe_02_Roughness.dds
+map_Pm textures/door_stoneframe_02_Metalness.dds
+newmtl door_stoneframe_02.001
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/door_stoneframe_02_BaseColor.dds
+map_Bump -bm 1.000000 textures/door_stoneframe_02_Normal.dds
+norm textures/door_stoneframe_02_Normal.dds
+map_Pr textures/door_stoneframe_02_Roughness.dds
+map_Pm textures/door_stoneframe_02_Metalness.dds
+newmtl floor_01
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/floor_tiles_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/floor_tiles_01_Normal.dds
+norm textures/floor_tiles_01_Normal.dds
+map_Pr textures/floor_tiles_01_Roughness.dds
+map_Pm textures/floor_tiles_01_Metalness.dds
+newmtl floor_01.001
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/floor_tiles_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/floor_tiles_01_Normal.dds
+norm textures/floor_tiles_01_Normal.dds
+map_Pr textures/floor_tiles_01_Roughness.dds
+map_Pm textures/floor_tiles_01_Metalness.dds
+newmtl glass
+Kd 0.000000 0.000000 0.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.000000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+newmtl glass.001
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.000000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+newmtl lamp_glass_01
+Kd 0.610000 0.610000 0.610000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.390000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+newmtl light_bulb
+Kd 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 1.000000 1.000000 1.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.000000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+newmtl metal_door
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/metal_door_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/metal_door_01_Normal.dds
+norm textures/metal_door_01_Normal.dds
+map_Pr textures/metal_door_01_Roughness.dds
+map_Pm textures/metal_door_01_Metalness.dds
+newmtl metal_door.001
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/metal_door_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/metal_door_01_Normal.dds
+norm textures/metal_door_01_Normal.dds
+map_Pr textures/metal_door_01_Roughness.dds
+map_Pm textures/metal_door_01_Metalness.dds
+newmtl ornament_01
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/ornament_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/ornament_01_Normal.dds
+norm textures/ornament_01_Normal.dds
+map_Pr textures/ornament_01_Roughness.dds
+map_Pm textures/ornament_01_Metalness.dds
+newmtl ornament_01.001
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/ornament_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/ornament_01_Normal.dds
+norm textures/ornament_01_Normal.dds
+map_Pr textures/ornament_01_Roughness.dds
+map_Pm textures/ornament_01_Metalness.dds
+newmtl ornament_lion
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/lionhead_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/lionhead_01_Normal.dds
+norm textures/lionhead_01_Normal.dds
+map_Pr textures/lionhead_01_Roughness.dds
+map_Pm textures/lionhead_01_Metalness.dds
+newmtl roof_tiles_01
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/roof_tiles_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/roof_tiles_01_Normal.dds
+norm textures/roof_tiles_01_Normal.dds
+map_Pr textures/roof_tiles_01_Roughness.dds
+map_Pm textures/roof_tiles_01_Metalness.dds
+newmtl stone_trims_01
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/stone_trims_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/stone_trims_01_Normal.dds
+norm textures/stone_trims_01_Normal.dds
+map_Pr textures/stone_trims_01_Roughness.dds
+map_Pm textures/stone_trims_01_Metalness.dds
+newmtl stone_trims_01.001
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/stone_trims_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/stone_trims_01_Normal.dds
+norm textures/stone_trims_01_Normal.dds
+map_Pr textures/stone_trims_01_Roughness.dds
+map_Pm textures/stone_trims_01_Metalness.dds
+newmtl stone_trims_02
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/stone_trims_02_BaseColor.dds
+map_Bump -bm 1.000000 textures/stone_trims_02_Normal.dds
+norm textures/stone_trims_02_Normal.dds
+map_Pr textures/stone_trims_02_Roughness.dds
+map_Pm textures/stone_trims_02_Metalness.dds
+newmtl stone_trims_02.001
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/stone_trims_02_BaseColor.dds
+map_Bump -bm 1.000000 textures/stone_trims_02_Normal.dds
+norm textures/stone_trims_02_Normal.dds
+map_Pr textures/stone_trims_02_Roughness.dds
+map_Pm textures/stone_trims_02_Metalness.dds
+newmtl stones_01_tile
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/stone_01_tile_BaseColor.dds
+map_Bump -bm 1.000000 textures/stone_01_tile_Normal.dds
+norm textures/stone_01_tile_Normal.dds
+map_Pr textures/stone_01_tile_Roughness.dds
+map_Pm textures/stone_01_tile_Metalness.dds
+newmtl stones_01_tile.001
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/stone_01_tile_BaseColor.dds
+map_Bump -bm 1.000000 textures/stone_01_tile_Normal.dds
+norm textures/stone_01_tile_Normal.dds
+map_Pr textures/stone_01_tile_Roughness.dds
+map_Pm textures/stone_01_tile_Metalness.dds
+newmtl stones_2ndfloor
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/stones_2ndfloor_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/stones_2ndfloor_01_Normal.dds
+norm textures/stones_2ndfloor_01_Normal.dds
+map_Pr textures/stones_2ndfloor_01_Roughness.dds
+map_Pm textures/stones_2ndfloor_01_Metalness.dds
+newmtl stones_2ndfloor.001
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/stones_2ndfloor_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/stones_2ndfloor_01_Normal.dds
+norm textures/stones_2ndfloor_01_Normal.dds
+map_Pr textures/stones_2ndfloor_01_Roughness.dds
+map_Pm textures/stones_2ndfloor_01_Metalness.dds
+newmtl window_frame_01
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/window_frame_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/window_frame_01_Normal.dds
+norm textures/window_frame_01_Normal.dds
+map_Pr textures/window_frame_01_Roughness.dds
+map_Pm textures/window_frame_01_Metalness.dds
+newmtl window_frame_01.001
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/window_frame_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/window_frame_01_Normal.dds
+norm textures/window_frame_01_Normal.dds
+map_Pr textures/window_frame_01_Roughness.dds
+map_Pm textures/window_frame_01_Metalness.dds
+newmtl wood_01
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/wood_tile_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/wood_tile_01_Normal.dds
+norm textures/wood_tile_01_Normal.dds
+map_Pr textures/wood_tile_01_Roughness.dds
+map_Pm textures/wood_tile_01_Metalness.dds
+newmtl wood_door_01
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 1.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+map_Kd textures/wood_door_01_BaseColor.dds
+map_Bump -bm 1.000000 textures/wood_door_01_Normal.dds
+norm textures/wood_door_01_Normal.dds
+map_Pr textures/wood_door_01_Roughness.dds
+map_Pm textures/wood_door_01_Metalness.dds

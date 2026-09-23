@@ -9,6 +9,7 @@
 #include <sstream>
 #include <cfloat>
 #include <cmath>
+#include <unordered_map>
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -101,8 +102,8 @@ private:
     XMFLOAT4X4 mProj = MathHelper::Identity4x4();
 
     float mTheta = 1.5f * XM_PI;
-    float mPhi = 0.30f * XM_PI;
-    float mRadius = 18.0f;
+    float mPhi = 0.40f * XM_PI;
+    float mRadius = 5.0f;
 
     XMFLOAT2 mTexOffset = XMFLOAT2(0.0f, 0.0f);
     XMFLOAT2 mTexSpeed = XMFLOAT2(0.0f, 0.0f);
@@ -239,8 +240,8 @@ void App::Update(const GameTimer& gt)
         objConstants.DisplacementScale = 0.08f;
         objConstants.TessNear = 5.0f;
         objConstants.TessFar = 30.0f;
-        objConstants.TessMin = 2.0f;
-        objConstants.TessMax = 16.0f;
+        objConstants.TessMin = 1.0f;
+        objConstants.TessMax = 1.0f;
 
         mObjectCB->CopyData(static_cast<int>(i), objConstants);
     }
@@ -541,7 +542,7 @@ void App::SetupLights()
 
 void App::LoadTexture()
 {
-    std::string inputfile = "../Assets/house.obj";
+    std::string inputfile = "../Assets/sponza.obj";
 
     tinyobj::ObjReaderConfig reader_config;
     reader_config.triangulate = true;
@@ -563,10 +564,16 @@ void App::LoadTexture()
     mTextures.clear();
     mTextureUploadHeaps.clear();
 
+    std::unordered_map<std::string, int> textureIndices;
+
     auto loadTexture = [&](const std::string& texName) -> int
     {
         if (texName.empty())
             return -1;
+
+        auto existing = textureIndices.find(texName);
+        if (existing != textureIndices.end())
+            return existing->second;
 
         std::wstring filename =
             L"../assets/" +
@@ -588,6 +595,7 @@ void App::LoadTexture()
         int srvIndex = 1 + static_cast<int>(mTextures.size());
         mTextures.push_back(texture);
         mTextureUploadHeaps.push_back(uploadHeap);
+        textureIndices.emplace(texName, srvIndex);
         return srvIndex;
     };
 
@@ -637,7 +645,7 @@ void App::BuildConstantBuffers()
 
 void App::BuildGeometry()
 {
-    std::string inputfile = "../Assets/house.obj";
+    std::string inputfile = "../Assets/sponza.obj";
 
     tinyobj::ObjReaderConfig reader_config;
     reader_config.triangulate = true;
@@ -805,34 +813,13 @@ void App::BuildGeometry()
 
 void App::BuildSceneObjects()
 {
-    constexpr int GridSize = 20;
-    constexpr float Spacing = 5.0f;
-    constexpr float ObjectScale = 0.20f;
-
     mSceneObjects.clear();
-    mSceneObjects.reserve(GridSize * GridSize);
+    mSceneObjects.reserve(1);
 
-    const float halfGrid = (GridSize - 1) * Spacing * 0.5f;
-
-    for (int z = 0; z < GridSize; ++z)
-    {
-        for (int x = 0; x < GridSize; ++x)
-        {
-            const float worldX = x * Spacing - halfGrid;
-            const float worldZ = z * Spacing - halfGrid;
-            const float angle = ((x * 17 + z * 31) % 360) * (XM_PI / 180.0f);
-
-            XMMATRIX world =
-                XMMatrixScaling(ObjectScale, ObjectScale, ObjectScale) *
-                XMMatrixRotationY(angle) *
-                XMMatrixTranslation(worldX, 0.0f, worldZ);
-
-            SceneObject object;
-            XMStoreFloat4x4(&object.World, world);
-            mLocalBounds.Transform(object.Bounds, world);
-            mSceneObjects.push_back(object);
-        }
-    }
+    SceneObject object;
+    XMStoreFloat4x4(&object.World, XMMatrixIdentity());
+    object.Bounds = mLocalBounds;
+    mSceneObjects.push_back(object);
 
     mOctree.Build(mSceneObjects, 7, 16);
     mVisibleObjects.resize(mSceneObjects.size());
