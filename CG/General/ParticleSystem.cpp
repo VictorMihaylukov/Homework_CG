@@ -94,7 +94,7 @@ void ParticleSystem::BuildResources(ID3D12Device* device, ID3D12GraphicsCommandL
             1.0f
         };
 
-        p.Size = 0.08f + rv * 0.08f;
+        p.Size = 0.05f + rv * 0.05f;
         p.Seed = float(i) + 0.123f;
 
         initial[i] = p;

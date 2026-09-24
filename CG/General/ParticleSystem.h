@@ -25,7 +25,7 @@ struct ParticleRenderConstants
 class ParticleSystem
 {
 public:
-    static const UINT MaxParticles = 1;
+    static const UINT MaxParticles = 2048;
 
     void Initialize(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
                     DXGI_FORMAT backBufferFormat, DXGI_FORMAT depthFormat);

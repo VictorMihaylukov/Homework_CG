@@ -79,18 +79,9 @@ void GS(point VSOut input[1], inout TriangleStream<GSOut> stream)
 float4 PS(GSOut input) : SV_Target
 {
     float2 p = input.UV * 2.0f - 1.0f;
-    float radius = length(p);
-    float arm0 = abs(p.y);
-    float arm1 = abs(0.8660254f * p.x + 0.5f * p.y);
-    float arm2 = abs(-0.8660254f * p.x + 0.5f * p.y);
-    float armDistance = min(arm0, min(arm1, arm2));
-    float snowflake = 1.0f - smoothstep(0.035f, 0.085f, armDistance);
-    snowflake *= 1.0f - smoothstep(0.42f, 0.50f, radius);
 
-    if (snowflake < 0.15f)
+    if (length(p) > 0.5f)
         discard;
 
-    float glow = 1.0f - smoothstep(0.0f, 0.5f, radius);
-    float3 color = input.Color.rgb * (0.85f + 0.35f * glow);
-    return float4(color, 1.0f);
+    return input.Color;
 }
