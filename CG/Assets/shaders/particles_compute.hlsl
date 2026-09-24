@@ -41,9 +41,9 @@ void CS(uint3 tid : SV_DispatchThreadID)
         float h2 = Hash(p.Seed + 41.0f);
         float h3 = Hash(p.Seed + 83.0f);
 
-        p.Position.x = gEmitterX + (h0 - 0.5f) * 18.0f;
+        p.Position.x = gEmitterX + (h0 - 0.5f) * 52.0f;
         p.Position.y = gEmitterY + h1 * 1.5f;
-        p.Position.z = gEmitterZ + (h2 - 0.5f) * 18.0f;
+        p.Position.z = gEmitterZ + (h2 - 0.5f) * 42.0f;
 
         p.Velocity.x = 0.0f;
         p.Velocity.y = -(0.8f + h3 * 0.7f);

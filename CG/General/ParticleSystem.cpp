@@ -71,9 +71,9 @@ void ParticleSystem::BuildResources(ID3D12Device* device, ID3D12GraphicsCommandL
 
         p.Position =
         {
-            (rx - 0.5f) * 18.0f,
+            (rx - 0.5f) * 52.0f,
             11.0f + ry * 1.5f,
-            (rz - 0.5f) * 18.0f
+            (rz - 0.5f) * 42.0f
         };
 
         p.Velocity =
