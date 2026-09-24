@@ -94,9 +94,11 @@ private:
     bool mGrayscaleEnabled = true;
     bool mVignetteEnabled = true;
     bool mGBufferPreviewEnabled = false;
+    bool mEdgeDetectionEnabled = true;
     bool mPrev1KeyDown = false;
     bool mPrev2KeyDown = false;
     bool mPrevGKeyDown = false;
+    bool mPrev3KeyDown = false;
 
     std::vector<std::unique_ptr<Material>> mMaterials;
 
@@ -114,6 +116,9 @@ private:
     std::vector<DeferredLight> mLights;
     XMFLOAT3 mAmbientLight = { 0.06f, 0.06f, 0.08f };
     XMFLOAT3 mEyePos = { 0.0f, 0.0f, 0.0f };
+    XMFLOAT3 mPreviousEyePos = { 0.0f, 0.0f, 0.0f };
+    float mCameraSpeed = 0.0f;
+    bool mHasPreviousEyePos = false;
     XMFLOAT4X4 mShadowTransforms[CascadeCount] = {};
     float mCascadeSplits[CascadeCount] = {};
     XMFLOAT4X4 mSpotShadowTransforms[SpotShadowCount] = {};
@@ -219,6 +224,22 @@ void App::Update(const GameTimer& gt)
 
     mEyePos = { x, y, z };
 
+    if (mHasPreviousEyePos && gt.DeltaTime() > 0.000001f)
+    {
+        const float dx = mEyePos.x - mPreviousEyePos.x;
+        const float dy = mEyePos.y - mPreviousEyePos.y;
+        const float dz = mEyePos.z - mPreviousEyePos.z;
+        const float rawSpeed = sqrtf(dx * dx + dy * dy + dz * dz) / gt.DeltaTime();
+        const float smoothing = 1.0f - expf(-10.0f * gt.DeltaTime());
+        mCameraSpeed += (rawSpeed - mCameraSpeed) * smoothing;
+    }
+    else
+    {
+        mCameraSpeed = 0.0f;
+        mHasPreviousEyePos = true;
+    }
+    mPreviousEyePos = mEyePos;
+
     XMVECTOR pos = XMVectorSet(x, y, z, 1.0f);
     XMVECTOR target = XMVectorSet(0.0f, 2.0f, 0.0f, 0.0f);
     XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
@@ -261,11 +282,12 @@ void App::Update(const GameTimer& gt)
     XMStoreFloat4x4(&invViewProjT, XMMatrixTranspose(XMMatrixInverse(nullptr, view * proj)));
     UINT postEffectFlags = (mGrayscaleEnabled ? 1u : 0u)
         | (mVignetteEnabled ? 2u : 0u)
-        | (mGBufferPreviewEnabled ? 4u : 0u);
+        | (mGBufferPreviewEnabled ? 4u : 0u)
+        | (mEdgeDetectionEnabled ? 8u : 0u);
     mRenderingSystem->UpdateLights(mEyePos, mAmbientLight, mLights.data(),
         static_cast<int>(mLights.size()), viewT, invViewProjT,
         mShadowTransforms, mCascadeSplits,
-        mSpotShadowTransforms, mSpotShadowLightIndices, postEffectFlags);
+        mSpotShadowTransforms, mSpotShadowLightIndices, postEffectFlags, mCameraSpeed);
 
     std::wostringstream caption;
     caption << L"CG | particles: " << ParticleSystem::MaxParticles
@@ -275,7 +297,9 @@ void App::Update(const GameTimer& gt)
             << L" | O: octree " << (mOctreeEnabled ? L"ON" : L"OFF")
             << L" | G: G-buffer " << (mGBufferPreviewEnabled ? L"ON" : L"OFF")
             << L" | 1: grayscale " << (mGrayscaleEnabled ? L"ON" : L"OFF")
-            << L" | 2: vignette " << (mVignetteEnabled ? L"ON" : L"OFF");
+            << L" | 2: vignette " << (mVignetteEnabled ? L"ON" : L"OFF")
+            << L" | 3: edges " << (mEdgeDetectionEnabled ? L"ON" : L"OFF")
+            << L" | camera speed: " << static_cast<int>(mCameraSpeed);
     SetWindowText(mhMainWnd, caption.str().c_str());
 }
 
@@ -891,6 +915,7 @@ void App::UpdateCullingInput()
     const bool oneDown = (GetAsyncKeyState('1') & 0x8000) != 0;
     const bool twoDown = (GetAsyncKeyState('2') & 0x8000) != 0;
     const bool gDown = (GetAsyncKeyState('G') & 0x8000) != 0;
+    const bool threeDown = (GetAsyncKeyState('3') & 0x8000) != 0;
 
     if (cDown && !mPrevCKeyDown)
         mFrustumCullingEnabled = !mFrustumCullingEnabled;
@@ -907,11 +932,15 @@ void App::UpdateCullingInput()
     if (gDown && !mPrevGKeyDown)
         mGBufferPreviewEnabled = !mGBufferPreviewEnabled;
 
+    if (threeDown && !mPrev3KeyDown)
+        mEdgeDetectionEnabled = !mEdgeDetectionEnabled;
+
     mPrevCKeyDown = cDown;
     mPrevOKeyDown = oDown;
     mPrev1KeyDown = oneDown;
     mPrev2KeyDown = twoDown;
     mPrevGKeyDown = gDown;
+    mPrev3KeyDown = threeDown;
 }
 
 void App::UpdateVisibility()
