@@ -745,6 +745,7 @@ void App::BuildGeometry()
                     vertex.Normal.x = attrib.normals[3 * idx.normal_index + 0];
                     vertex.Normal.y = attrib.normals[3 * idx.normal_index + 1];
                     vertex.Normal.z = attrib.normals[3 * idx.normal_index + 2];
+
                 }
                 else
                 {
