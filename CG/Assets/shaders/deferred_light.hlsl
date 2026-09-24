@@ -26,7 +26,8 @@ cbuffer cbPass : register(b0)
     float4x4 gSpotShadowTransform[2];
     int4 gSpotShadowLightIndices;
     uint gPostEffectFlags;
-    float3 gPostPad;
+    float gCameraSpeed;
+    float2 gPostPad;
 };
 
 Texture2D gDepthMap    : register(t0);
@@ -190,6 +191,76 @@ float3 ApplyVignette(float3 color, float2 uv)
     return color * lerp(0.35f, 1.0f, factor);
 }
 
+float3 ReconstructWorldPosition(float2 uv, float depth)
+{
+    float4 posH = float4(
+        uv.x * 2.0f - 1.0f,
+        1.0f - uv.y * 2.0f,
+        depth,
+        1.0f);
+    float4 reconstructed = mul(posH, gInvViewProj);
+    return reconstructed.xyz / reconstructed.w;
+}
+
+float ComputeEdgeStrength(float2 uv)
+{
+    uint width, height;
+    gDepthMap.GetDimensions(width, height);
+    float2 texel = 1.0f / float2(width, height);
+
+    float centerDepth = gDepthMap.SampleLevel(gSamPoint, uv, 0.0f).r;
+    float3 centerNormal = gNormalMap.SampleLevel(gSamPoint, uv, 0.0f).xyz;
+    bool centerValid = centerDepth < 1.0f;
+
+    static const float2 offsets[4] =
+    {
+        float2(-1.0f, 0.0f), float2(1.0f, 0.0f),
+        float2(0.0f, -1.0f), float2(0.0f, 1.0f)
+    };
+
+    float silhouetteEdge = 0.0f;
+    float normalEdge = 0.0f;
+    float depthEdge = 0.0f;
+
+    [unroll]
+    for (int i = 0; i < 4; ++i)
+    {
+        float2 sampleUv = saturate(uv + offsets[i] * texel);
+        float neighborDepth = gDepthMap.SampleLevel(gSamPoint, sampleUv, 0.0f).r;
+        float3 neighborNormal = gNormalMap.SampleLevel(gSamPoint, sampleUv, 0.0f).xyz;
+        bool neighborValid = neighborDepth < 1.0f;
+
+        silhouetteEdge = max(silhouetteEdge, centerValid != neighborValid ? 1.0f : 0.0f);
+
+        if (centerValid && neighborValid)
+        {
+            float3 n0 = normalize(centerNormal);
+            float3 n1 = normalize(neighborNormal);
+            normalEdge = max(normalEdge, 1.0f - saturate(dot(n0, n1)));
+
+            float3 centerPos = ReconstructWorldPosition(uv, centerDepth);
+            float3 neighborPos = ReconstructWorldPosition(sampleUv, neighborDepth);
+            float d0 = length(centerPos - gEyePosW);
+            float d1 = length(neighborPos - gEyePosW);
+            float relativeDepthJump = abs(d0 - d1) / max(d0 * 0.02f, 0.05f);
+            depthEdge = max(depthEdge, relativeDepthJump);
+        }
+    }
+
+    float geometricEdge = max(
+        smoothstep(0.08f, 0.35f, normalEdge),
+        smoothstep(0.35f, 1.25f, depthEdge));
+
+    return saturate(max(silhouetteEdge, geometricEdge));
+}
+
+float3 GetVelocityEdgeColor()
+{
+    float speed01 = saturate(gCameraSpeed / 25.0f);
+    return lerp(float3(0.05f, 0.25f, 1.0f),
+                float3(1.0f, 0.05f, 0.02f), speed01);
+}
+
 float4 PS(VertexOut pin) : SV_Target
 {
     float depth = gDepthMap.Sample(gSamPoint, pin.TexC).r;
@@ -216,43 +287,39 @@ float4 PS(VertexOut pin) : SV_Target
         return float4(gAlbedoMap.Sample(gSamPoint, debugUV).rgb, 1.0f);
     }
 
-    if (depth >= 1.0f)
-        return float4(0.02f, 0.02f, 0.03f, 1.0f);
+    const bool hasGeometry = depth < 1.0f;
+    float3 color = float3(0.02f, 0.02f, 0.03f);
 
-    float4 posH = float4(
-        pin.TexC.x * 2.0f - 1.0f,
-        1.0f - pin.TexC.y * 2.0f,
-        depth,
-        1.0f);
-    float4 reconstructed = mul(posH, gInvViewProj);
-    float3 posW = reconstructed.xyz / reconstructed.w;
-    float3 toEyeW = normalize(gEyePosW - posW);
-
-    float3 color = albedo * gAmbientLight;
-
-    [unroll]
-    for (int i = 0; i < MaxLights; ++i)
+    if (hasGeometry)
     {
-        if (i >= gNumLights)
-            break;
+        float3 posW = ReconstructWorldPosition(pin.TexC, depth);
+        float3 toEyeW = normalize(gEyePosW - posW);
+        color = albedo * gAmbientLight;
 
-        Light L = gLights[i];
+        [unroll]
+        for (int i = 0; i < MaxLights; ++i)
+        {
+            if (i >= gNumLights)
+                break;
 
-        if (L.Type == 0)
-        {
-            float depthV = mul(float4(posW,1.0f), gView).z;
-            int cascade = depthV > gCascadeSplits.x ? 1 : 0;
-            cascade = depthV > gCascadeSplits.y ? 2 : cascade;
-            cascade = depthV > gCascadeSplits.z ? 3 : cascade;
-            float visibility = CalcDirectionalShadow(posW,cascade);
-            color += visibility * ComputeDirectionalLight(L, normal, toEyeW, albedo);
-        }
-        else if (L.Type == 1)
-            color += ComputePointLight(L, posW, normal, toEyeW, albedo);
-        else if (L.Type == 2)
-        {
-            float visibility=CalcSpotShadow(posW,i);
-            color += visibility*ComputeSpotLight(L,posW,normal,toEyeW,albedo);
+            Light L = gLights[i];
+
+            if (L.Type == 0)
+            {
+                float depthV = mul(float4(posW,1.0f), gView).z;
+                int cascade = depthV > gCascadeSplits.x ? 1 : 0;
+                cascade = depthV > gCascadeSplits.y ? 2 : cascade;
+                cascade = depthV > gCascadeSplits.z ? 3 : cascade;
+                float visibility = CalcDirectionalShadow(posW,cascade);
+                color += visibility * ComputeDirectionalLight(L, normal, toEyeW, albedo);
+            }
+            else if (L.Type == 1)
+                color += ComputePointLight(L, posW, normal, toEyeW, albedo);
+            else if (L.Type == 2)
+            {
+                float visibility=CalcSpotShadow(posW,i);
+                color += visibility*ComputeSpotLight(L,posW,normal,toEyeW,albedo);
+            }
         }
     }
 
@@ -261,6 +328,12 @@ float4 PS(VertexOut pin) : SV_Target
 
     if ((gPostEffectFlags & 2u) != 0u)
         color = ApplyVignette(color, pin.TexC);
+
+    if ((gPostEffectFlags & 8u) != 0u)
+    {
+        float edge = ComputeEdgeStrength(pin.TexC);
+        color = lerp(color, GetVelocityEdgeColor(), edge);
+    }
 
     return float4(color, 1.0f);
 }

@@ -55,7 +55,7 @@ void RenderingSystem::UpdateLights(
     const XMFLOAT4X4& invViewProj,
     const XMFLOAT4X4* shadowTransforms, const float* cascadeSplits,
     const XMFLOAT4X4* spotShadowTransforms, const int* spotShadowLightIndices,
-    UINT postEffectFlags)
+    UINT postEffectFlags, float cameraSpeed)
 {
     LightingPassConstants c; c.EyePosW=eyePosW; c.AmbientLight=ambientLight;
     c.NumLights=MathHelper::Clamp(numLights,0,MaxDeferredLights);
@@ -67,6 +67,7 @@ void RenderingSystem::UpdateLights(
     for(int i=0;i<SpotShadowCount;++i)c.SpotShadowTransform[i]=spotShadowTransforms[i];
     c.SpotShadowLightIndices=XMINT4(spotShadowLightIndices[0],spotShadowLightIndices[1],-1,-1);
     c.PostEffectFlags = postEffectFlags;
+    c.CameraSpeed = cameraSpeed;
     mLightingCB->CopyData(0,c);
 }
 

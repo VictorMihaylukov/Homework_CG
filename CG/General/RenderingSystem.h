@@ -35,8 +35,9 @@ struct LightingPassConstants {
     DirectX::XMFLOAT4X4 SpotShadowTransform[SpotShadowCount];
     DirectX::XMINT4 SpotShadowLightIndices = {-1,-1,-1,-1};
 
-    UINT PostEffectFlags = 3;
-    DirectX::XMFLOAT3 PostPad = {0,0,0};
+    UINT PostEffectFlags = 11;
+    float CameraSpeed = 0.0f;
+    DirectX::XMFLOAT2 PostPad = {0,0};
 };
 
 class RenderingSystem {
@@ -55,7 +56,7 @@ public:
     void EndShadowPass(ID3D12GraphicsCommandList*);
     void UpdateLights(const DirectX::XMFLOAT3&,const DirectX::XMFLOAT3&,const DeferredLight*,int,
         const DirectX::XMFLOAT4X4&,const DirectX::XMFLOAT4X4&,const DirectX::XMFLOAT4X4*,const float*,
-        const DirectX::XMFLOAT4X4*,const int*,UINT postEffectFlags);
+        const DirectX::XMFLOAT4X4*,const int*,UINT postEffectFlags,float cameraSpeed);
     void ExecuteLightingPass(ID3D12GraphicsCommandList*,D3D12_CPU_DESCRIPTOR_HANDLE);
 
 private:
