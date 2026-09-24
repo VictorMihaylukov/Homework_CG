@@ -72,7 +72,7 @@ void ParticleSystem::BuildResources(ID3D12Device* device, ID3D12GraphicsCommandL
         p.Position =
         {
             (rx - 0.5f) * 52.0f,
-            11.0f + ry * 1.5f,
+            22.0f + ry * 1.5f,
             (rz - 0.5f) * 42.0f
         };
 
@@ -275,7 +275,7 @@ void ParticleSystem::Update(ID3D12GraphicsCommandList* cmdList, float deltaTime,
         XMFLOAT3 Gravity; float Speed;
         float Pad[2];
     }
-    c = { deltaTime, totalTime, { 0.0f, 11.0f, 0.0f }, 0.0f, { 0.0f, 0.0f, 0.0f }, 1.0f, { 0, 0 } };
+    c = { deltaTime, totalTime, { 0.0f, 22.0f, 0.0f }, 0.0f, { 0.0f, 0.0f, 0.0f }, 1.0f, { 0, 0 } };
     cmdList->SetComputeRoot32BitConstants(2, 12, &c, 0);
 
     const UINT groupSize = 128;
